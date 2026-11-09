@@ -9,6 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/usuarios")
 public class UsuarioController {
@@ -46,6 +49,24 @@ public class UsuarioController {
                         )
                 ))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UsuarioResponseDTO>> buscarTodos() {
+
+        List<UsuarioResponseDTO> usuarios = usuarioService.buscarTodos()
+                .stream()
+                .map(usuario -> new UsuarioResponseDTO(
+                        usuario.getCdUsuario(),
+                        usuario.getNmUsuario(),
+                        usuario.getNrTelefone(),
+                        usuario.getDsEmail(),
+                        usuario.getStUsuario(),
+                        usuario.getDtCadastro()
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(usuarios);
     }
 
     // UPDATE

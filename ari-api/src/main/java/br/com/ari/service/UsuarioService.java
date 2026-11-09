@@ -5,6 +5,7 @@ import br.com.ari.dao.UsuarioDAO;
 import br.com.ari.model.Usuario;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -44,6 +45,10 @@ public class UsuarioService {
         }
 
         return usuarioDAO.buscarPorId(id);
+    }
+
+    public List<Usuario> buscarTodos() {
+        return usuarioDAO.buscarTodos();
     }
 
     // UPDATE
