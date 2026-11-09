@@ -17,6 +17,24 @@ public class UsuarioDAO  implements CrudDAO<Usuario, Long>  {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+
+    public void testarUsuarios() {
+
+        Integer total = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM T_ARI_USUARIO",
+                Integer.class
+        );
+
+        Integer usuarioId1 = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM T_ARI_USUARIO WHERE CD_USUARIO = ?",
+                Integer.class,
+                1L
+        );
+
+        System.out.println("Total de usuários no Java: " + total);
+        System.out.println("Usuário com ID 1: " + usuarioId1);
+    }
+
     @Override
     public int criar(Usuario usuario) {
         String sql= """
@@ -25,7 +43,7 @@ public class UsuarioDAO  implements CrudDAO<Usuario, Long>  {
                 NR_TELEFONE,
                 DS_EMAIL,
                 DS_SENHA_HASH,
-                ST_USUARIO,
+                ST_USUARIO
                 )
                 VALUES(?, ?, ?, ?, ?)
                 """;
