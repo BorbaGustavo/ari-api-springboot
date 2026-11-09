@@ -3,6 +3,7 @@ package br.com.ari.service;
 
 import br.com.ari.dao.SessaoWebDAO;
 import br.com.ari.model.SessaoWeb;
+
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -18,121 +19,98 @@ public class SessaoWebService {
         this.sessaoWebDAO = sessaoWebDAO;
     }
 
-    // CREATE
-    public int criar(SessaoWeb sessao) {
+    // CRIAR SESSÃO
+    public SessaoWeb criar(Long cdUsuario, long duracaoMinutos) {
 
-        if (sessao == null) {
+        if (cdUsuario != null && cdUsuario <= 0) {
+            throw new IllegalArgumentException("Usuário inválido.");
+        }
+
+        if (duracaoMinutos <= 0) {
             throw new IllegalArgumentException(
-                    "Sessão não informada."
+                    "A duração da sessão deve ser maior que zero."
             );
         }
 
-        // Gera um UUID caso não tenha sido informado
-        if (sessao.getDsUuid() == null ||
-                sessao.getDsUuid().isBlank()) {
+        SessaoWeb sessao = SessaoWeb.builder()
+                .dsUuid(UUID.randomUUID().toString())
+                .cdUsuario(cdUsuario)
+                .dtExpiracao(LocalDateTime.now().plusMinutes(duracaoMinutos))
+                .stSessao("ATIVA")
+                .build();
 
-            sessao.setDsUuid(UUID.randomUUID().toString());
+        int linhasAfetadas = sessaoWebDAO.criar(sessao);
+
+        if (linhasAfetadas == 0 || sessao.getCdSessaoWeb() == null) {
+            throw new IllegalStateException("Não foi possível criar a sessão.");
         }
 
-        // Verifica a data de expiração
-        if (sessao.getDtExpiracao() == null ||
-                !sessao.getDtExpiracao().isAfter(LocalDateTime.now())) {
-
-            throw new IllegalArgumentException(
-                    "A data de expiração deve ser futura."
-            );
-        }
-
-        // Usuário é opcional, mas se informado deve ter ID válido
-        if (sessao.getCdUsuario() != null &&
-                sessao.getCdUsuario() <= 0) {
-
-            throw new IllegalArgumentException(
-                    "ID do usuário inválido."
-            );
-        }
-
-        // Define o status inicial
-        if (sessao.getStSessao() == null ||
-                sessao.getStSessao().isBlank()) {
-
-            sessao.setStSessao("ATIVA");
-        }
-
-        if (!sessao.getStSessao().equals("ATIVA")) {
-            throw new IllegalArgumentException(
-                    "Uma nova sessão deve iniciar como ATIVA."
-            );
-        }
-
-        return sessaoWebDAO.criar(sessao);
+        return sessaoWebDAO.buscarPorUuid(sessao.getDsUuid())
+                .orElseThrow(() ->
+                        new IllegalStateException("Erro ao recuperar sessão criada.")
+                );
     }
 
-    // READ
-    public Optional<SessaoWeb> buscarPorId(Long id) {
+    // BUSCAR SESSÃO POR UUID
+    public Optional<SessaoWeb> buscarPorUuid(String uuid) {
 
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID inválido.");
+        if (uuid == null || uuid.isBlank()) {
+            throw new IllegalArgumentException("UUID não informado.");
         }
 
-        return sessaoWebDAO.buscarPorId(id);
+        return sessaoWebDAO.buscarPorUuid(uuid);
     }
 
-    // UPDATE
-    public int atualizar(SessaoWeb sessao) {
+    // VALIDAR SE A SESSÃO ESTÁ ATIVA
+    public Optional<SessaoWeb> buscarSessaoAtiva(String uuid) {
 
-        if (sessao == null ||
-                sessao.getCdSessaoWeb() == null ||
-                sessao.getCdSessaoWeb() <= 0) {
+        Optional<SessaoWeb> resultado = buscarPorUuid(uuid);
 
-            throw new IllegalArgumentException(
-                    "Sessão ou ID inválido."
-            );
+        if (resultado.isEmpty()) {
+            return Optional.empty();
         }
 
-        if (sessaoWebDAO.buscarPorId(
-                sessao.getCdSessaoWeb()
-        ).isEmpty()) {
+        SessaoWeb sessao = resultado.get();
 
-            throw new IllegalArgumentException(
-                    "Sessão não encontrada."
-            );
+        if (!"ATIVA".equals(sessao.getStSessao())) {
+            return Optional.empty();
         }
 
-        if (sessao.getDtExpiracao() == null ||
-                !sessao.getDtExpiracao().isAfter(LocalDateTime.now())) {
+        if (!sessao.getDtExpiracao().isAfter(LocalDateTime.now())) {
 
-            throw new IllegalArgumentException(
-                    "A data de expiração deve ser futura."
+            sessaoWebDAO.atualizarStatus(
+                    sessao.getCdSessaoWeb(),
+                    "EXPIRADA"
             );
+
+            return Optional.empty();
         }
 
-        if (sessao.getStSessao() == null ||
-                !(sessao.getStSessao().equals("ATIVA") ||
-                        sessao.getStSessao().equals("EXPIRADA") ||
-                        sessao.getStSessao().equals("REVOGADA"))) {
-
-            throw new IllegalArgumentException(
-                    "Status da sessão inválido."
-            );
-        }
-
-        return sessaoWebDAO.atualizar(sessao);
+        return Optional.of(sessao);
     }
 
-    // DELETE
-    public int excluir(Long id) {
+    // REVOGAR SESSÃO
+    public void revogar(Long id) {
 
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID inválido.");
-        }
+        validarId(id);
 
         if (sessaoWebDAO.buscarPorId(id).isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Sessão não encontrada."
-            );
+            throw new IllegalArgumentException("Sessão não encontrada.");
         }
 
-        return sessaoWebDAO.excluir(id);
+        int linhasAfetadas = sessaoWebDAO.excluir(id);
+
+        if (linhasAfetadas == 0) {
+            throw new IllegalStateException(
+                    "Não foi possível revogar a sessão."
+            );
+        }
+    }
+
+    private void validarId(Long id) {
+
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID da sessão inválido.");
+        }
     }
 }

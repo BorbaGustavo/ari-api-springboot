@@ -103,4 +103,14 @@ public class FuncionarioService {
 
         return funcionarioDAO.excluir(id);
     }
+
+    // BUSCAR FUNCIONÁRIOS POR ESTABELECIMENTO
+    public java.util.List<Funcionario> buscarPorEstabelecimento(Long idEstabelecimento) {
+
+        if (idEstabelecimento == null || idEstabelecimento <= 0) {
+            throw new IllegalArgumentException("Estabelecimento inválido.");
+        }
+
+        return funcionarioDAO.buscarPorEstabelecimento(idEstabelecimento);
+    }
 }
