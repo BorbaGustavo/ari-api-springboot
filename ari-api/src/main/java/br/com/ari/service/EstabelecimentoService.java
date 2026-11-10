@@ -7,6 +7,9 @@ import br.com.ari.dto.EstabelecimentoRequestDTO;
 import br.com.ari.dto.EstabelecimentoUpdateDTO;
 import br.com.ari.dto.EstabelecimentoAcolhimentoUpdateDTO;
 import br.com.ari.dto.EstabelecimentoSuspensaoDTO;
+import br.com.ari.integration.BrasilApiCepResponse;
+import br.com.ari.integration.BrasilApiCnpjResponse;
+import br.com.ari.integration.BrasilApiService;
 
 import br.com.ari.model.Estabelecimento;
 
@@ -21,12 +24,15 @@ import java.util.Optional;
 public class EstabelecimentoService {
 
     private final EstabelecimentoDAO estabelecimentoDAO;
+    private final BrasilApiService brasilApiService;
 
     // CONSTRUTOR
     public EstabelecimentoService(
-            EstabelecimentoDAO estabelecimentoDAO) {
+            EstabelecimentoDAO estabelecimentoDAO,
+            BrasilApiService brasilApiService) {
 
         this.estabelecimentoDAO = estabelecimentoDAO;
+        this.brasilApiService = brasilApiService;
     }
 
     // CADASTRAR ESTABELECIMENTO
@@ -35,6 +41,15 @@ public class EstabelecimentoService {
         validarDadosCadastro(dto);
 
         String cnpj = dto.nrCnpj().trim();
+        validarDadosBrasilApi(
+                cnpj,
+                dto.nrCep(),
+                dto.dsLogradouro(),
+                dto.nrEndereco(),
+                dto.nmBairro(),
+                dto.nmCidade(),
+                dto.sgUf()
+        );
 
         // VERIFICAR SE O CNPJ JÁ ESTÁ CADASTRADO
         if (estabelecimentoDAO.buscarPorCnpj(cnpj).isPresent()) {
@@ -102,6 +117,16 @@ public class EstabelecimentoService {
                                 "Estabelecimento não encontrado."
                         )
                 );
+
+        validarDadosBrasilApi(
+                existente.getNrCnpj(),
+                dto.nrCep(),
+                dto.dsLogradouro(),
+                dto.nrEndereco(),
+                dto.nmBairro(),
+                dto.nmCidade(),
+                dto.sgUf()
+        );
 
         // PRESERVAR CNPJ, ESTADO E CONTROLES OPERACIONAIS
         // A atualização cadastral não altera esses campos.
@@ -308,6 +333,81 @@ public class EstabelecimentoService {
                     "Tipo de estabelecimento é obrigatório."
             );
         }
+    }
+
+    private void validarDadosBrasilApi(
+            String cnpj,
+            String cep,
+            String logradouro,
+            String numero,
+            String bairro,
+            String cidade,
+            String uf) {
+
+        BrasilApiCnpjResponse dadosCnpj =
+                brasilApiService.consultarCnpj(cnpj);
+
+        if (!"ATIVA".equalsIgnoreCase(
+                normalizar(dadosCnpj.descricaoSituacaoCadastral()))) {
+
+            throw new IllegalArgumentException(
+                    "O CNPJ não está ativo na Receita Federal."
+            );
+        }
+
+        if (cep == null || cep.isBlank()) {
+            return;
+        }
+
+        BrasilApiCepResponse dadosCep =
+                brasilApiService.consultarCep(cep);
+
+        comparar("CEP", cep, dadosCnpj.cep());
+        comparar("logradouro", logradouro, dadosCnpj.logradouro());
+        comparar("bairro", bairro, dadosCnpj.bairro());
+        comparar("cidade", cidade, dadosCnpj.municipio());
+        comparar("UF", uf, dadosCnpj.uf());
+
+        comparar("CEP", cep, dadosCep.cep());
+        comparar("logradouro", logradouro, dadosCep.street());
+        comparar("bairro", bairro, dadosCep.neighborhood());
+        comparar("cidade", cidade, dadosCep.city());
+        comparar("UF", uf, dadosCep.uf());
+
+        if (dadosCnpj.numero() != null
+                && !dadosCnpj.numero().isBlank()
+                && numero != null
+                && !numero.isBlank()) {
+
+            comparar("número", numero, dadosCnpj.numero());
+        }
+    }
+
+    private void comparar(String campo, String informado, String esperado) {
+        if (informado != null
+                && !informado.isBlank()
+                && esperado != null
+                && !esperado.isBlank()
+                && !normalizar(informado).equals(normalizar(esperado))) {
+
+            throw new IllegalArgumentException(
+                    "O " + campo + " informado não corresponde aos dados oficiais."
+            );
+        }
+    }
+
+    private String normalizar(String valor) {
+        if (valor == null) {
+            return "";
+        }
+
+        return java.text.Normalizer.normalize(
+                        valor,
+                        java.text.Normalizer.Form.NFD
+                )
+                .replaceAll("\\p{M}", "")
+                .replaceAll("[^A-Za-z0-9]", "")
+                .toUpperCase();
     }
 
     // VALIDAR DADOS DA ATUALIZAÇÃO
