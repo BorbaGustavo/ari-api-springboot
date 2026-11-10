@@ -2,6 +2,7 @@
 package br.com.ari.controller;
 
 import br.com.ari.dto.FuncionarioLoginDTO;
+import br.com.ari.dto.FuncionarioLoginResponseDTO;
 import br.com.ari.dto.FuncionarioRequestDTO;
 import br.com.ari.dto.FuncionarioResponseDTO;
 import br.com.ari.dto.FuncionarioSenhaUpdateDTO;
@@ -9,6 +10,7 @@ import br.com.ari.dto.FuncionarioUpdateDTO;
 import br.com.ari.model.Funcionario;
 
 import br.com.ari.service.FuncionarioService;
+import br.com.ari.service.FuncionarioSessaoService;
 
 import jakarta.validation.Valid;
 
@@ -26,12 +28,15 @@ import java.util.List;
 public class FuncionarioController {
 
     private final FuncionarioService funcionarioService;
+    private final FuncionarioSessaoService funcionarioSessaoService;
 
     // CONSTRUTOR
     public FuncionarioController(
-            FuncionarioService funcionarioService) {
+            FuncionarioService funcionarioService,
+            FuncionarioSessaoService funcionarioSessaoService) {
 
         this.funcionarioService = funcionarioService;
+        this.funcionarioSessaoService = funcionarioSessaoService;
     }
 
     @PostMapping
@@ -132,13 +137,20 @@ public class FuncionarioController {
 
     @PostMapping("/login")
     @Operation(summary = "Autenticar funcionário", description = "Valida as credenciais de login do funcionário.")
-    public ResponseEntity<FuncionarioResponseDTO> autenticar(
+    public ResponseEntity<FuncionarioLoginResponseDTO> autenticar(
             @Valid @RequestBody FuncionarioLoginDTO dto) {
 
         FuncionarioResponseDTO resposta =
                 funcionarioService.autenticar(dto);
 
-        return ResponseEntity.ok(resposta);
+        FuncionarioSessaoService.Sessao sessao =
+            funcionarioSessaoService.criar(resposta);
+
+        return ResponseEntity.ok(new FuncionarioLoginResponseDTO(
+            resposta,
+            sessao.uuid(),
+            sessao.expiracao()
+        ));
     }
 
 }

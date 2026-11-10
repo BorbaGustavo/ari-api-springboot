@@ -167,13 +167,23 @@ Resposta:
 O login de funcionário é feito em `POST /api/funcionarios/login`.
 As operações administrativas usam o `Principal` do Spring para identificar o
 funcionário e o estabelecimento. O corpo retornado pelo login de funcionário
-é um `FuncionarioResponseDTO`, não um `LoginResponseDTO`.
+contém o funcionário e um UUID de sessão.
+
+Depois do login, envie o campo `dsUuid` no header
+`X-Funcionario-Session-UUID` nas operações administrativas:
+
+```http
+X-Funcionario-Session-UUID: <dsUuid>
+```
 
 A configuração atual deixa as requisições liberadas no Spring Security
 (`permitAll`). Ainda assim, os controllers administrativos verificam a
 existência de um `Principal`; sem uma autenticação que o estabeleça, essas
 operações podem retornar `409 Conflict` com a mensagem de funcionário não
 autenticado.
+
+As sessões de funcionário duram duas horas e ficam em memória. Elas são
+invalidadas quando a aplicação é reiniciada.
 
 ## Catálogo de endpoints
 
@@ -328,9 +338,20 @@ pontuação. `sgUf` usa duas letras maiúsculas. Latitude deve estar entre
   "nmCidade": "São Paulo",
   "sgUf": "SP",
   "nrLatitude": -23.561684,
-  "nrLongitude": -46.655981
+  "nrLongitude": -46.655981,
+  "responsavel": {
+    "nmResponsavel": "Gabriela Souza",
+    "nrTelefone": "11999999999",
+    "dsEmailLogin": "gabriela@ari.demo",
+    "dsSenha": "senhasenha"
+  }
 }
 ```
+
+O cadastro do estabelecimento cria automaticamente o primeiro funcionário
+`ADMIN` usando os dados de `responsavel`. A senha é armazenada com BCrypt e
+não é retornada pela API. O estabelecimento e seu administrador são criados
+na mesma transação.
 
 ### Condição de apoio
 

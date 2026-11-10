@@ -8,6 +8,7 @@ import br.com.ari.dto.FuncionarioUpdateDTO;
 import br.com.ari.dto.FuncionarioSenhaUpdateDTO;
 import br.com.ari.dto.FuncionarioLoginDTO;
 import br.com.ari.dto.FuncionarioResponseDTO;
+import br.com.ari.dto.ResponsavelEstabelecimentoRequestDTO;
 
 import br.com.ari.model.Funcionario;
 
@@ -83,6 +84,51 @@ public class FuncionarioService {
                 .build();
 
         return funcionarioDAO.criar(funcionario);
+    }
+
+    public int criarAdministradorInicial(
+            Long cdEstabelecimento,
+            ResponsavelEstabelecimentoRequestDTO dto) {
+
+        if (cdEstabelecimento == null || cdEstabelecimento <= 0) {
+            throw new IllegalArgumentException(
+                    "Estabelecimento inválido."
+            );
+        }
+
+        if (dto == null) {
+            throw new IllegalArgumentException(
+                    "Dados do responsável não informados."
+            );
+        }
+
+        String email = dto.dsEmailLogin().trim().toLowerCase();
+
+        if (funcionarioDAO.buscarPorEmailLogin(email).isPresent()) {
+            throw new IllegalArgumentException(
+                    "Este e-mail já está sendo utilizado."
+            );
+        }
+
+        Funcionario administrador = Funcionario.builder()
+                .cdEstabelecimento(cdEstabelecimento)
+                .nmFuncionario(dto.nmResponsavel().trim())
+                .nrTelefone(dto.nrTelefone())
+                .dsEmailLogin(email)
+                .dsSenhaHash(passwordEncoder.encode(dto.dsSenha()))
+                .tpPerfil("ADMIN")
+                .flTreinado("N")
+                .stFuncionario("ATIVO")
+                .build();
+
+        int linhasAfetadas = funcionarioDAO.criar(administrador);
+        if (linhasAfetadas == 0) {
+            throw new IllegalStateException(
+                    "Não foi possível cadastrar o administrador."
+            );
+        }
+
+        return linhasAfetadas;
     }
 
     // BUSCAR FUNCIONÁRIO POR ID

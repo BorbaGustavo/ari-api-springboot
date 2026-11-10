@@ -10,11 +10,13 @@ import br.com.ari.dto.EstabelecimentoSuspensaoDTO;
 import br.com.ari.integration.BrasilApiCepResponse;
 import br.com.ari.integration.BrasilApiCnpjResponse;
 import br.com.ari.integration.BrasilApiService;
+import br.com.ari.dto.ResponsavelEstabelecimentoRequestDTO;
 
 import br.com.ari.model.Estabelecimento;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,17 +27,21 @@ public class EstabelecimentoService {
 
     private final EstabelecimentoDAO estabelecimentoDAO;
     private final BrasilApiService brasilApiService;
+    private final FuncionarioService funcionarioService;
 
     // CONSTRUTOR
     public EstabelecimentoService(
             EstabelecimentoDAO estabelecimentoDAO,
-            BrasilApiService brasilApiService) {
+            BrasilApiService brasilApiService,
+            FuncionarioService funcionarioService) {
 
         this.estabelecimentoDAO = estabelecimentoDAO;
         this.brasilApiService = brasilApiService;
+        this.funcionarioService = funcionarioService;
     }
 
     // CADASTRAR ESTABELECIMENTO
+    @Transactional
     public Estabelecimento criar(EstabelecimentoRequestDTO dto) {
 
         validarDadosCadastro(dto);
@@ -80,12 +86,19 @@ public class EstabelecimentoService {
         }
 
         // RECUPERAR ESTABELECIMENTO CADASTRADO
-        return estabelecimentoDAO.buscarPorCnpj(cnpj)
+        Estabelecimento criado = estabelecimentoDAO.buscarPorCnpj(cnpj)
                 .orElseThrow(() ->
                         new IllegalStateException(
                                 "Erro ao recuperar estabelecimento cadastrado."
                         )
                 );
+
+        funcionarioService.criarAdministradorInicial(
+                criado.getCdEstabelecimento(),
+                dto.responsavel()
+        );
+
+        return criado;
     }
 
     // LISTAR TODOS OS ESTABELECIMENTOS

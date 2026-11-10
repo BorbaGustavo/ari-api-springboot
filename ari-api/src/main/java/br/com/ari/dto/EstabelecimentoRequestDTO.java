@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -90,6 +92,11 @@ public record EstabelecimentoRequestDTO(
         @DecimalMin(value = "-180.0", message = "Longitude mínima é -180.")
         @DecimalMax(value = "180.0", message = "Longitude máxima é 180.")
         @Schema(description = "Longitude entre -180 e 180.", example = "-46.655981")
-        BigDecimal nrLongitude
+        BigDecimal nrLongitude,
+
+        @NotNull(message = "Responsável pelo estabelecimento é obrigatório.")
+        @Valid
+        @Schema(description = "Dados do primeiro administrador do estabelecimento.", requiredMode = Schema.RequiredMode.REQUIRED)
+        ResponsavelEstabelecimentoRequestDTO responsavel
 
 ) {}
