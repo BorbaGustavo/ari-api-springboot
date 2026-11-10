@@ -13,6 +13,9 @@ import java.util.UUID;
 @Service
 public class SessaoWebService {
 
+    // REGRA DO ARI: SESSÃO COM VALIDADE DE DUAS HORAS
+    private static final long DURACAO_SESSAO_HORAS = 2;
+
     private final SessaoWebDAO sessaoWebDAO;
 
     public SessaoWebService(SessaoWebDAO sessaoWebDAO) {
@@ -20,34 +23,33 @@ public class SessaoWebService {
     }
 
     // CRIAR SESSÃO
-    public SessaoWeb criar(Long cdUsuario, long duracaoMinutos) {
+    public SessaoWeb criar(Long cdUsuario) {
 
-        if (cdUsuario != null && cdUsuario <= 0) {
-            throw new IllegalArgumentException("Usuário inválido.");
-        }
+        validarUsuarioId(cdUsuario);
 
-        if (duracaoMinutos <= 0) {
-            throw new IllegalArgumentException(
-                    "A duração da sessão deve ser maior que zero."
-            );
-        }
+        LocalDateTime dtCriacao = LocalDateTime.now();
 
         SessaoWeb sessao = SessaoWeb.builder()
-                .dsUuid(UUID.randomUUID().toString())
                 .cdUsuario(cdUsuario)
-                .dtExpiracao(LocalDateTime.now().plusMinutes(duracaoMinutos))
+                .dsUuid(UUID.randomUUID().toString())
+                .dtExpiracao(dtCriacao.plusHours(DURACAO_SESSAO_HORAS))
                 .stSessao("ATIVA")
                 .build();
 
         int linhasAfetadas = sessaoWebDAO.criar(sessao);
 
         if (linhasAfetadas == 0 || sessao.getCdSessaoWeb() == null) {
-            throw new IllegalStateException("Não foi possível criar a sessão.");
+            throw new IllegalStateException(
+                    "Não foi possível criar a sessão."
+            );
         }
 
-        return sessaoWebDAO.buscarPorUuid(sessao.getDsUuid())
+        // RECUPERAR SESSÃO CADASTRADA
+        return sessaoWebDAO.buscarPorId(sessao.getCdSessaoWeb())
                 .orElseThrow(() ->
-                        new IllegalStateException("Erro ao recuperar sessão criada.")
+                        new IllegalStateException(
+                                "Erro ao recuperar sessão criada."
+                        )
                 );
     }
 
@@ -55,13 +57,15 @@ public class SessaoWebService {
     public Optional<SessaoWeb> buscarPorUuid(String uuid) {
 
         if (uuid == null || uuid.isBlank()) {
-            throw new IllegalArgumentException("UUID não informado.");
+            throw new IllegalArgumentException(
+                    "UUID não informado."
+            );
         }
 
         return sessaoWebDAO.buscarPorUuid(uuid);
     }
 
-    // VALIDAR SE A SESSÃO ESTÁ ATIVA
+    // VALIDAR SE A SESSÃO ESTÁ ATIVA E DENTRO DA VALIDADE
     public Optional<SessaoWeb> buscarSessaoAtiva(String uuid) {
 
         Optional<SessaoWeb> resultado = buscarPorUuid(uuid);
@@ -72,11 +76,16 @@ public class SessaoWebService {
 
         SessaoWeb sessao = resultado.get();
 
+        // VERIFICAR STATUS
         if (!"ATIVA".equals(sessao.getStSessao())) {
             return Optional.empty();
         }
 
-        if (!sessao.getDtExpiracao().isAfter(LocalDateTime.now())) {
+        // VERIFICAR EXPIRAÇÃO
+        LocalDateTime agora = LocalDateTime.now();
+
+        if (sessao.getDtExpiracao() == null
+                || !sessao.getDtExpiracao().isAfter(agora)) {
 
             sessaoWebDAO.atualizarStatus(
                     sessao.getCdSessaoWeb(),
@@ -94,11 +103,23 @@ public class SessaoWebService {
 
         validarId(id);
 
-        if (sessaoWebDAO.buscarPorId(id).isEmpty()) {
-            throw new IllegalArgumentException("Sessão não encontrada.");
+        SessaoWeb sessao = sessaoWebDAO.buscarPorId(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Sessão não encontrada."
+                        )
+                );
+
+        if (!"ATIVA".equals(sessao.getStSessao())) {
+            throw new IllegalStateException(
+                    "A sessão não está ativa para revogação."
+            );
         }
 
-        int linhasAfetadas = sessaoWebDAO.excluir(id);
+        int linhasAfetadas = sessaoWebDAO.atualizarStatus(
+                id,
+                "REVOGADA"
+        );
 
         if (linhasAfetadas == 0) {
             throw new IllegalStateException(
@@ -107,10 +128,23 @@ public class SessaoWebService {
         }
     }
 
+    // VALIDAR ID DA USUÁRIA
+    private void validarUsuarioId(Long cdUsuario) {
+
+        if (cdUsuario == null || cdUsuario <= 0) {
+            throw new IllegalArgumentException(
+                    "Usuário inválido."
+            );
+        }
+    }
+
+    // VALIDAR ID DA SESSÃO
     private void validarId(Long id) {
 
         if (id == null || id <= 0) {
-            throw new IllegalArgumentException("ID da sessão inválido.");
+            throw new IllegalArgumentException(
+                    "ID da sessão inválido."
+            );
         }
     }
 }

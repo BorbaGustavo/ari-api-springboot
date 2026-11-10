@@ -1,153 +1,194 @@
-package br.com.ari.dao;
 
+package br.com.ari.dao;
 
 import br.com.ari.model.Usuario;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 
-
 @Repository
-public class UsuarioDAO  implements CrudDAO<Usuario, Long>  {
+public class UsuarioDAO implements CrudDAO<Usuario, Long> {
 
     private final JdbcTemplate jdbcTemplate;
+
     public UsuarioDAO(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    // MAPEAMENTO DO RESULTADO DO BANCO PARA MODEL
+    // A senha só é recuperada quando necessária para autenticação.
+    private final RowMapper<Usuario> mapperComSenha =
+            (rs, rowNum) -> mapearUsuario(rs, true);
 
-    public void testarUsuarios() {
+    private final RowMapper<Usuario> mapperSemSenha =
+            (rs, rowNum) -> mapearUsuario(rs, false);
 
-        Integer total = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM T_ARI_USUARIO",
-                Integer.class
-        );
+    // MAPEAMENTO DOS ATRIBUTOS DO USUÁRIO
+    private static Usuario mapearUsuario(
+            ResultSet rs, boolean incluirSenha) throws SQLException {
 
-        Integer usuarioId1 = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM T_ARI_USUARIO WHERE CD_USUARIO = ?",
-                Integer.class,
-                1L
-        );
+        Timestamp dtCadastro = rs.getTimestamp("DT_CADASTRO");
 
-        System.out.println("Total de usuários no Java: " + total);
-        System.out.println("Usuário com ID 1: " + usuarioId1);
-    }
-
-    @Override
-    public int criar(Usuario usuario) {
-        String sql= """
-                INSERT INTO T_ARI_USUARIO(
-                NM_USUARIO,
-                NR_TELEFONE,
-                DS_EMAIL,
-                DS_SENHA_HASH,
-                ST_USUARIO
-                )
-                VALUES(?, ?, ?, ?, ?)
-                """;
-
-        return jdbcTemplate.update(sql,
-                usuario.getNmUsuario(),
-                usuario.getNrTelefone(),
-                usuario.getDsEmail(),
-                usuario.getDsSenhaHash(),
-                usuario.getStUsuario()
-        );
-    }
-
-    @Override
-    public Optional<Usuario> buscarPorId(Long cdUsuario) {
-
-        String sql = """
-        SELECT
-            CD_USUARIO,
-            NM_USUARIO,
-            NR_TELEFONE,
-            DS_EMAIL,
-            DS_SENHA_HASH,
-            ST_USUARIO,
-            DT_CADASTRO
-        FROM T_ARI_USUARIO
-        WHERE CD_USUARIO = ?
-        """;
-
-        RowMapper<Usuario> mapper = (rs, rowNum) -> Usuario.builder()
+        Usuario.UsuarioBuilder builder = Usuario.builder()
                 .cdUsuario(rs.getLong("CD_USUARIO"))
                 .nmUsuario(rs.getString("NM_USUARIO"))
                 .nrTelefone(rs.getString("NR_TELEFONE"))
                 .dsEmail(rs.getString("DS_EMAIL"))
-                .dsSenhaHash(rs.getString("DS_SENHA_HASH"))
                 .stUsuario(rs.getString("ST_USUARIO"))
-                .dtCadastro(rs.getTimestamp("DT_CADASTRO").toLocalDateTime())
-                .build();
+                .dtCadastro(
+                        dtCadastro != null
+                                ? dtCadastro.toLocalDateTime()
+                                : null
+                );
 
-        return jdbcTemplate.query(sql, mapper, cdUsuario)
-                .stream()
-                .findFirst();
+        if (incluirSenha) {
+            builder.dsSenhaHash(rs.getString("DS_SENHA_HASH"));
+        }
+
+        return builder.build();
     }
 
-    public List<Usuario> buscarTodos() {
-
-        String sql = """
-        SELECT
-            CD_USUARIO,
-            NM_USUARIO,
-            NR_TELEFONE,
-            DS_EMAIL,
-            ST_USUARIO,
-            DT_CADASTRO
-        FROM T_ARI_USUARIO
-        ORDER BY CD_USUARIO
-        """;
-
-        return jdbcTemplate.query(sql, (rs, rowNum) ->
-                Usuario.builder()
-                        .cdUsuario(rs.getLong("CD_USUARIO"))
-                        .nmUsuario(rs.getString("NM_USUARIO"))
-                        .nrTelefone(rs.getString("NR_TELEFONE"))
-                        .dsEmail(rs.getString("DS_EMAIL"))
-                        .stUsuario(rs.getString("ST_USUARIO"))
-                        .dtCadastro(rs.getTimestamp("DT_CADASTRO").toLocalDateTime())
-                        .build()
-        );
-    }
-
+    // CADASTRAR USUÁRIO
     @Override
-    public int atualizar(Usuario usuario) {
+    public int criar(Usuario usuario) {
 
         String sql = """
-        UPDATE T_ARI_USUARIO
-        SET
-            NM_USUARIO = ?,
-            NR_TELEFONE = ?,
-            DS_EMAIL = ?,
-            ST_USUARIO = ?
-        WHERE CD_USUARIO = ?
-        """;
+                INSERT INTO T_ARI_USUARIO (
+                    NM_USUARIO,
+                    NR_TELEFONE,
+                    DS_EMAIL,
+                    DS_SENHA_HASH
+                ) VALUES (?, ?, ?, ?)
+                """;
 
         return jdbcTemplate.update(
                 sql,
                 usuario.getNmUsuario(),
                 usuario.getNrTelefone(),
                 usuario.getDsEmail(),
-                usuario.getStUsuario(),
+                usuario.getDsSenhaHash()
+        );
+    }
+
+    // BUSCAR USUÁRIO POR ID
+    @Override
+    public Optional<Usuario> buscarPorId(Long cdUsuario) {
+
+        String sql = """
+                SELECT
+                    CD_USUARIO,
+                    NM_USUARIO,
+                    NR_TELEFONE,
+                    DS_EMAIL,
+                    ST_USUARIO,
+                    DT_CADASTRO
+                FROM T_ARI_USUARIO
+                WHERE CD_USUARIO = ?
+                """;
+
+        return jdbcTemplate.query(sql, mapperSemSenha, cdUsuario)
+                .stream()
+                .findFirst();
+    }
+
+    // LISTAR TODOS OS USUÁRIOS
+    public List<Usuario> buscarTodos() {
+
+        String sql = """
+                SELECT
+                    CD_USUARIO,
+                    NM_USUARIO,
+                    NR_TELEFONE,
+                    DS_EMAIL,
+                    ST_USUARIO,
+                    DT_CADASTRO
+                FROM T_ARI_USUARIO
+                ORDER BY CD_USUARIO
+                """;
+
+        return jdbcTemplate.query(sql, mapperSemSenha);
+    }
+
+    // BUSCAR USUÁRIO POR E-MAIL
+    // Necessário para autenticação.
+    // Recupera o hash da senha para conferência no Service.
+    public Optional<Usuario> buscarPorEmail(String email) {
+
+        String sql = """
+                SELECT
+                    CD_USUARIO,
+                    NM_USUARIO,
+                    NR_TELEFONE,
+                    DS_EMAIL,
+                    DS_SENHA_HASH,
+                    ST_USUARIO,
+                    DT_CADASTRO
+                FROM T_ARI_USUARIO
+                WHERE LOWER(DS_EMAIL) = LOWER(?)
+                """;
+
+        return jdbcTemplate.query(sql, mapperComSenha, email)
+                .stream()
+                .findFirst();
+    }
+
+    // ATUALIZAR DADOS CADASTRAIS
+    @Override
+    public int atualizar(Usuario usuario) {
+
+        String sql = """
+                UPDATE T_ARI_USUARIO
+                SET
+                    NM_USUARIO = ?,
+                    NR_TELEFONE = ?,
+                    DS_EMAIL = ?
+                WHERE CD_USUARIO = ?
+                """;
+
+        return jdbcTemplate.update(
+                sql,
+                usuario.getNmUsuario(),
+                usuario.getNrTelefone(),
+                usuario.getDsEmail(),
                 usuario.getCdUsuario()
         );
     }
 
+    // ATUALIZAR SENHA
+    // Recebe somente a senha já protegida com BCrypt.
+    public int atualizarSenha(Long cdUsuario, String dsSenhaHash) {
+
+        String sql = """
+                UPDATE T_ARI_USUARIO
+                SET DS_SENHA_HASH = ?
+                WHERE CD_USUARIO = ?
+                """;
+
+        return jdbcTemplate.update(
+                sql,
+                dsSenhaHash,
+                cdUsuario
+        );
+    }
+
+    // BLOQUEAR USUÁRIO
+    // Preserva o cadastro, as sessões e o histórico de avisos.
     @Override
     public int excluir(Long id) {
 
         String sql = """
-        DELETE FROM T_ARI_USUARIO
-        WHERE CD_USUARIO = ?
-        """;
+                UPDATE T_ARI_USUARIO
+                SET ST_USUARIO = 'BLOQUEADO'
+                WHERE CD_USUARIO = ?
+                """;
 
         return jdbcTemplate.update(sql, id);
     }
-
 
 }

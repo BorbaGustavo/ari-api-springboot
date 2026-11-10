@@ -1,15 +1,18 @@
+
 package br.com.ari.dto;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public record AvisoChegadaResponseDTO(
-        Long cdAvisoChegada,
+public record AvisoAcolhimentoResponseDTO(
+
+        Long cdAviso,
+        Long cdUsuario,
         Long cdEstabelecimento,
         Long cdFuncionario,
+
         LocalDateTime dtAviso,
         String stAviso,
-        BigDecimal nrDistanciaMetros,
-        Long nrTempoEstimadoMin,
+        Integer nrTempoEstimado,
         LocalDateTime dtAcolhimento
+
 ) {}

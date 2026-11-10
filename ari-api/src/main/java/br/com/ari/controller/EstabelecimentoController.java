@@ -1,132 +1,166 @@
+
 package br.com.ari.controller;
 
-import br.com.ari.dto.EstabelecimentoRequestDTO;
 import br.com.ari.dto.EstabelecimentoResponseDTO;
-import br.com.ari.model.Estabelecimento;
-import br.com.ari.service.EstabelecimentoService;
+import br.com.ari.dto.EstabelecimentoAcolhimentoDTO;
+import br.com.ari.dto.EstabelecimentoSuspensaoDTO;
 
-import lombok.RequiredArgsConstructor;
+import br.com.ari.model.Estabelecimento;
+
+import br.com.ari.service.EstabelecimentoService;
+import br.com.ari.service.FuncionarioService;
+
+import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
+
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
+import java.security.Principal;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/estabelecimentos")
-@RequiredArgsConstructor
 public class EstabelecimentoController {
 
     private final EstabelecimentoService estabelecimentoService;
+    private final FuncionarioService funcionarioService;
 
-    // CADASTRAR ESTABELECIMENTO
-    @PostMapping
-    public ResponseEntity<EstabelecimentoResponseDTO> criar(
-            @RequestBody EstabelecimentoRequestDTO dto) {
+    // CONSTRUTOR
+    public EstabelecimentoController(
+            EstabelecimentoService estabelecimentoService,
+            FuncionarioService funcionarioService) {
 
-        Estabelecimento estabelecimento = estabelecimentoService.criar(dto);
-
-        EstabelecimentoResponseDTO response = converterParaResponse(estabelecimento);
-
-        return ResponseEntity
-                .created(URI.create("/api/estabelecimentos/" + response.cdEstabelecimento()))
-                .body(response);
+        this.estabelecimentoService = estabelecimentoService;
+        this.funcionarioService = funcionarioService;
     }
 
-    // LISTAR TODOS OS ESTABELECIMENTOS
-    @GetMapping
-    public ResponseEntity<List<EstabelecimentoResponseDTO>> buscarTodos() {
-
-        List<EstabelecimentoResponseDTO> estabelecimentos =
-                estabelecimentoService.buscarTodos()
-                        .stream()
-                        .map(this::converterParaResponse)
-                        .toList();
-
-        return ResponseEntity.ok(estabelecimentos);
-    }
-
-    // BUSCAR ESTABELECIMENTO POR ID
-    @GetMapping("/{id}")
-    public ResponseEntity<EstabelecimentoResponseDTO> buscarPorId(
-            @PathVariable Long id) {
-
-        return estabelecimentoService.buscarPorId(id)
-                .map(this::converterParaResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    // ATUALIZAR ESTABELECIMENTO
-    @PutMapping("/{id}")
-    public ResponseEntity<Void> atualizar(
-            @PathVariable Long id,
-            @RequestBody EstabelecimentoRequestDTO dto) {
-
-        estabelecimentoService.atualizar(id, dto);
-
-        return ResponseEntity.noContent().build();
-    }
-
-    // EXCLUIR / DESATIVAR ESTABELECIMENTO
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> excluir(@PathVariable Long id) {
-
-        estabelecimentoService.excluir(id);
-
-        return ResponseEntity.noContent().build();
-    }
-
+    // =====================================================
     // BUSCAR ESTABELECIMENTOS PRÓXIMOS
+    // =====================================================
+
     @GetMapping("/proximos")
     public ResponseEntity<List<EstabelecimentoResponseDTO>> buscarProximos(
             @RequestParam Double latitude,
             @RequestParam Double longitude) {
 
         List<EstabelecimentoResponseDTO> estabelecimentos =
-                estabelecimentoService.buscarProximos(latitude, longitude)
-                        .stream()
+                estabelecimentoService.buscarProximos(
+                                latitude,
+                                longitude
+                        ).stream()
                         .map(this::converterParaResponse)
                         .toList();
 
         return ResponseEntity.ok(estabelecimentos);
     }
 
-    // BUSCAR ESTABELECIMENTOS POR CEP
-    @GetMapping("/busca")
-    public ResponseEntity<List<EstabelecimentoResponseDTO>> buscarPorCep(
-            @RequestParam String cep) {
+    // =====================================================
+    // BUSCAR ESTABELECIMENTO POR ID
+    // =====================================================
 
-        List<EstabelecimentoResponseDTO> estabelecimentos =
-                estabelecimentoService.buscarPorCep(cep)
-                        .stream()
-                        .map(this::converterParaResponse)
-                        .toList();
+    @GetMapping("/{id}")
+    public ResponseEntity<EstabelecimentoResponseDTO> buscarPorId(
+            @PathVariable Long id) {
 
-        return ResponseEntity.ok(estabelecimentos);
+        return estabelecimentoService.buscarPorId(id)
+                .filter(estabelecimento ->
+                        "ATIVO".equals(
+                                estabelecimento.getStEstabelecimento()
+                        )
+                )
+                .map(this::converterParaResponse)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
+    // =====================================================
+    // HABILITAR OU DESABILITAR ACOLHIMENTO
+    // =====================================================
+
+    // Somente ADMIN do estabelecimento pode alterar.
+    @PatchMapping("/{id}/acolhimento")
+    public ResponseEntity<Void> atualizarAcolhimento(
+            Principal principal,
+            @PathVariable Long id,
+            @Valid @RequestBody EstabelecimentoAcolhimentoDTO dto) {
+
+        validarAdmin(principal, id);
+
+        estabelecimentoService.atualizarAcolhimento(id, dto);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // =====================================================
+    // CONFIGURAR OU REMOVER SUSPENSÃO TEMPORÁRIA
+    // =====================================================
+
+    // Somente ADMIN do estabelecimento pode alterar.
+    // Uma data futura configura a suspensão.
+    // Uma data nula remove a suspensão.
+    @PatchMapping("/{id}/suspensao")
+    public ResponseEntity<Void> atualizarSuspensao(
+            Principal principal,
+            @PathVariable Long id,
+            @Valid @RequestBody EstabelecimentoSuspensaoDTO dto) {
+
+        validarAdmin(principal, id);
+
+        estabelecimentoService.atualizarSuspensao(id, dto);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // =====================================================
+    // VALIDAR ADMINISTRADOR DO ESTABELECIMENTO
+    // =====================================================
+
+    private void validarAdmin(
+            Principal principal,
+            Long cdEstabelecimento) {
+
+        if (principal == null || principal.getName() == null) {
+            throw new IllegalStateException(
+                    "Funcionário não autenticado."
+            );
+        }
+
+        funcionarioService.validarAcessoAdminEstabelecimento(
+                principal.getName(),
+                cdEstabelecimento
+        );
+    }
+
+    // =====================================================
     // CONVERTER MODEL PARA RESPONSE DTO
+    // =====================================================
+
     private EstabelecimentoResponseDTO converterParaResponse(
             Estabelecimento estabelecimento) {
 
         return new EstabelecimentoResponseDTO(
                 estabelecimento.getCdEstabelecimento(),
-                estabelecimento.getCdTipoEstabelecimento(),
                 estabelecimento.getNrCnpj(),
                 estabelecimento.getNmRazaoSocial(),
                 estabelecimento.getNmFantasia(),
+                estabelecimento.getDsEmail(),
+                estabelecimento.getNrTelefone(),
+                estabelecimento.getDsTipoEstabelecimento(),
                 estabelecimento.getNrCep(),
-                estabelecimento.getNmLogradouro(),
+                estabelecimento.getDsLogradouro(),
                 estabelecimento.getNrEndereco(),
+                estabelecimento.getDsComplemento(),
                 estabelecimento.getNmBairro(),
                 estabelecimento.getNmCidade(),
                 estabelecimento.getSgUf(),
                 estabelecimento.getNrLatitude(),
                 estabelecimento.getNrLongitude(),
+                estabelecimento.getFlAcolhimentoAtivo(),
+                estabelecimento.getDtSuspensaoAte(),
                 estabelecimento.getStEstabelecimento(),
                 estabelecimento.getDtCadastro()
         );
     }
+
 }

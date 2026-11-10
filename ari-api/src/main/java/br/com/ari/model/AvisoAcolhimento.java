@@ -1,8 +1,12 @@
+
 package br.com.ari.model;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -10,9 +14,11 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AvisoChegada {
+public class AvisoAcolhimento {
 
-    private Long cdAvisoChegada;
+    private Long cdAviso;
+
+    private Long cdUsuario;
     private Long cdSessaoWeb;
     private Long cdEstabelecimento;
     private Long cdFuncionario;
@@ -21,8 +27,7 @@ public class AvisoChegada {
 
     private String stAviso;
 
-    private BigDecimal nrDistanciaMetros;
-    private Long nrTempoEstimadoMin;
+    private Integer nrTempoEstimado;
 
     private LocalDateTime dtAcolhimento;
 }
