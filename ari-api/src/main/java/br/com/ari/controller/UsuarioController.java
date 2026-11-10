@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -103,8 +102,7 @@ public class UsuarioController {
     @PostMapping("/logout")
     @Operation(
             summary = "Encerrar sessão",
-            description = "Revoga a sessão ativa identificada pelo header X-Session-UUID.",
-            security = @SecurityRequirement(name = "sessionUuid")
+            description = "Revoga a sessão ativa identificada pelo header X-Session-UUID."
     )
     public ResponseEntity<Void> sair(
             @Parameter(description = "UUID retornado no login.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER)

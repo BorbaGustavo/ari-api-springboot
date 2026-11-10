@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.security.Principal;
@@ -45,7 +44,7 @@ public class AvisoAcolhimentoController {
 
     // Somente usuária com sessão válida pode solicitar.
     @PostMapping
-    @Operation(summary = "Solicitar acolhimento", description = "Cria uma solicitação para um estabelecimento usando uma sessão válida.", security = @SecurityRequirement(name = "sessionUuid"))
+    @Operation(summary = "Solicitar acolhimento", description = "Cria uma solicitação para um estabelecimento usando uma sessão válida.")
     public ResponseEntity<AvisoAcolhimentoResponseDTO> criar(
             @Parameter(description = "UUID retornado no login da usuária.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER)
             @RequestHeader("X-Session-UUID") String uuid,
@@ -64,7 +63,7 @@ public class AvisoAcolhimentoController {
     // =====================================================
 
     @GetMapping("/me/ativo")
-    @Operation(summary = "Consultar aviso ativo", description = "Retorna o aviso ativo da usuária ou 204 quando não houver aviso.", security = @SecurityRequirement(name = "sessionUuid"))
+    @Operation(summary = "Consultar aviso ativo", description = "Retorna o aviso ativo da usuária ou 204 quando não houver aviso.")
     public ResponseEntity<AvisoAcolhimentoResponseDTO> buscarAvisoAtivo(
             @Parameter(description = "UUID retornado no login da usuária.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER)
             @RequestHeader("X-Session-UUID") String uuid) {
@@ -80,7 +79,7 @@ public class AvisoAcolhimentoController {
 
     // Somente a usuária proprietária pode cancelar.
     @PatchMapping("/{id}/cancelar")
-    @Operation(summary = "Cancelar aviso", description = "Cancela um aviso pertencente à usuária da sessão.", security = @SecurityRequirement(name = "sessionUuid"))
+    @Operation(summary = "Cancelar aviso", description = "Cancela um aviso pertencente à usuária da sessão.")
     public ResponseEntity<AvisoAcolhimentoResponseDTO> cancelar(
             @Parameter(description = "UUID retornado no login da usuária.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER)
             @RequestHeader("X-Session-UUID") String uuid,

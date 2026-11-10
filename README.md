@@ -100,14 +100,12 @@ Campos com restrições de validação devem ser preenchidos conforme a seção
 
 A Swagger UI é gerada a partir do código atual. Os controllers deste projeto
 possuem tags e descrições de operação, os DTOs possuem descrições e exemplos
-de campos/corpos, e o esquema `sessionUuid` documenta o header
-`X-Session-UUID`. Ao abrir uma operação, use **Try it out** para editar os
-valores de exemplo antes de executar a requisição.
+de campos/corpos. O header `X-Session-UUID` é documentado diretamente nas
+operações que exigem sessão. Ao abrir uma operação, use **Try it out** para
+editar os valores de exemplo antes de executar a requisição.
 
-O botão **Authorize** serve para preencher o esquema de sessão documentado.
-Ele não substitui uma autenticação de funcionário: as operações administrativas
-dependem de um `Principal` configurado no mecanismo de autenticação da
-aplicação.
+A seção **Available authorizations** não é exibida no Swagger, pois a sessão
+deve ser informada manualmente no header de cada requisição.
 
 ## Como ler a documentação
 
@@ -175,8 +173,7 @@ A configuração atual deixa as requisições liberadas no Spring Security
 (`permitAll`). Ainda assim, os controllers administrativos verificam a
 existência de um `Principal`; sem uma autenticação que o estabeleça, essas
 operações podem retornar `409 Conflict` com a mensagem de funcionário não
-autenticado. Isso é uma característica da implementação atual, não um
-equivalente ao botão **Authorize** da Swagger UI.
+autenticado.
 
 ## Catálogo de endpoints
 

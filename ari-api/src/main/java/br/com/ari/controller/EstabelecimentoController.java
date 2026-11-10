@@ -145,7 +145,11 @@ public class EstabelecimentoController {
 
         validarAdmin(principal, id);
 
-        estabelecimentoService.atualizarSuspensao(id, dto);
+        if (dto.dtSuspensaoAte() == null) {
+            estabelecimentoService.removerSuspensao(id);
+        } else {
+            estabelecimentoService.atualizarSuspensao(id, dto);
+        }
 
         return ResponseEntity.noContent().build();
     }
