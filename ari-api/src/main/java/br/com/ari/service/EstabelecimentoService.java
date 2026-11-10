@@ -49,12 +49,7 @@ public class EstabelecimentoService {
         String cnpj = dto.nrCnpj().trim();
         validarDadosBrasilApi(
                 cnpj,
-                dto.nrCep(),
-                dto.dsLogradouro(),
-                dto.nrEndereco(),
-                dto.nmBairro(),
-                dto.nmCidade(),
-                dto.sgUf()
+                dto.nrCep()
         );
 
         // VERIFICAR SE O CNPJ JÁ ESTÁ CADASTRADO
@@ -133,12 +128,7 @@ public class EstabelecimentoService {
 
         validarDadosBrasilApi(
                 existente.getNrCnpj(),
-                dto.nrCep(),
-                dto.dsLogradouro(),
-                dto.nrEndereco(),
-                dto.nmBairro(),
-                dto.nmCidade(),
-                dto.sgUf()
+                dto.nrCep()
         );
 
         // PRESERVAR CNPJ, ESTADO E CONTROLES OPERACIONAIS
@@ -350,12 +340,7 @@ public class EstabelecimentoService {
 
     private void validarDadosBrasilApi(
             String cnpj,
-            String cep,
-            String logradouro,
-            String numero,
-            String bairro,
-            String cidade,
-            String uf) {
+            String cep) {
 
         BrasilApiCnpjResponse dadosCnpj =
                 brasilApiService.consultarCnpj(cnpj);
@@ -374,37 +359,9 @@ public class EstabelecimentoService {
 
         BrasilApiCepResponse dadosCep =
                 brasilApiService.consultarCep(cep);
-
-        comparar("CEP", cep, dadosCnpj.cep());
-        comparar("logradouro", logradouro, dadosCnpj.logradouro());
-        comparar("bairro", bairro, dadosCnpj.bairro());
-        comparar("cidade", cidade, dadosCnpj.municipio());
-        comparar("UF", uf, dadosCnpj.uf());
-
-        comparar("CEP", cep, dadosCep.cep());
-        comparar("logradouro", logradouro, dadosCep.street());
-        comparar("bairro", bairro, dadosCep.neighborhood());
-        comparar("cidade", cidade, dadosCep.city());
-        comparar("UF", uf, dadosCep.uf());
-
-        if (dadosCnpj.numero() != null
-                && !dadosCnpj.numero().isBlank()
-                && numero != null
-                && !numero.isBlank()) {
-
-            comparar("número", numero, dadosCnpj.numero());
-        }
-    }
-
-    private void comparar(String campo, String informado, String esperado) {
-        if (informado != null
-                && !informado.isBlank()
-                && esperado != null
-                && !esperado.isBlank()
-                && !normalizar(informado).equals(normalizar(esperado))) {
-
+        if (dadosCep.cep() == null || dadosCep.cep().isBlank()) {
             throw new IllegalArgumentException(
-                    "O " + campo + " informado não corresponde aos dados oficiais."
+                    "O CEP informado não foi encontrado."
             );
         }
     }

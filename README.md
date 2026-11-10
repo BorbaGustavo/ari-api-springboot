@@ -319,8 +319,11 @@ Criação:
 ### Estabelecimento
 
 O CNPJ deve conter exatamente 14 dígitos e o CEP exatamente 8, ambos sem
-pontuação. `sgUf` usa duas letras maiúsculas. Latitude deve estar entre
-`-90` e `90`; longitude entre `-180` e `180`.
+pontuação. O CNPJ precisa estar ativo na Brasil API e não pode estar
+cadastrado anteriormente. Quando informado, o CEP precisa ser encontrado na
+Brasil API; os demais dados de endereço não são comparados automaticamente.
+`sgUf` usa duas letras maiúsculas. Latitude deve estar entre `-90` e `90`;
+longitude entre `-180` e `180`.
 
 ```json
 {
