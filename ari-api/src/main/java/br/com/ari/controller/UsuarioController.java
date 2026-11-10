@@ -1,11 +1,13 @@
 
 package br.com.ari.controller;
 
-import br.com.ari.dto.LoginRequestDTO;
-import br.com.ari.dto.LoginResponseDTO;
 import br.com.ari.dto.UsuarioRequestDTO;
+import br.com.ari.dto.UsuarioResponseDTO;
+import br.com.ari.dto.UsuarioSenhaUpdateDTO;
+import br.com.ari.dto.UsuarioUpdateDTO;
 
 import br.com.ari.model.SessaoWeb;
+import br.com.ari.model.Usuario;
 
 import br.com.ari.service.UsuarioService;
 import br.com.ari.service.SessaoWebService;
@@ -48,17 +50,38 @@ public class UsuarioController {
                 .build();
     }
 
-    // =====================================================
-    // LOGIN
-    // =====================================================
+    @GetMapping("/{id}")
+    public ResponseEntity<UsuarioResponseDTO> buscarPorId(
+            @PathVariable Long id) {
 
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> autenticar(
-            @Valid @RequestBody LoginRequestDTO dto) {
+        return usuarioService.buscarPorId(id)
+                .map(this::converterParaResponse)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 
-        LoginResponseDTO resposta = usuarioService.autenticar(dto);
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> atualizar(
+            @PathVariable Long id,
+            @Valid @RequestBody UsuarioUpdateDTO dto) {
 
-        return ResponseEntity.ok(resposta);
+        usuarioService.atualizar(id, dto);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/senha")
+    public ResponseEntity<Void> atualizarSenha(
+            @PathVariable Long id,
+            @Valid @RequestBody UsuarioSenhaUpdateDTO dto) {
+
+        usuarioService.atualizarSenha(id, dto);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable Long id) {
+        usuarioService.excluir(id);
+        return ResponseEntity.noContent().build();
     }
 
     // =====================================================
@@ -97,6 +120,17 @@ public class UsuarioController {
                                         + "Faça login novamente."
                         )
                 );
+    }
+
+    private UsuarioResponseDTO converterParaResponse(Usuario usuario) {
+        return new UsuarioResponseDTO(
+                usuario.getCdUsuario(),
+                usuario.getNmUsuario(),
+                usuario.getNrTelefone(),
+                usuario.getDsEmail(),
+                usuario.getStUsuario(),
+                usuario.getDtCadastro()
+        );
     }
 
 }

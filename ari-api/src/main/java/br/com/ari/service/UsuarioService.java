@@ -11,6 +11,7 @@ import br.com.ari.dto.UsuarioSenhaUpdateDTO;
 import br.com.ari.model.Usuario;
 import br.com.ari.model.SessaoWeb;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -190,7 +191,11 @@ public class UsuarioService {
             );
         }
 
-        return usuarioDAO.excluir(id);
+        try {
+            return usuarioDAO.excluirFisico(id);
+        } catch (DataIntegrityViolationException e) {
+            return usuarioDAO.excluir(id);
+        }
     }
 
     // AUTENTICAR USUÁRIO

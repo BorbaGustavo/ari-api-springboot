@@ -2,7 +2,9 @@
 package br.com.ari.controller;
 
 import br.com.ari.dto.EstabelecimentoResponseDTO;
-import br.com.ari.dto.EstabelecimentoAcolhimentoDTO;
+import br.com.ari.dto.EstabelecimentoRequestDTO;
+import br.com.ari.dto.EstabelecimentoUpdateDTO;
+import br.com.ari.dto.EstabelecimentoAcolhimentoUpdateDTO;
 import br.com.ari.dto.EstabelecimentoSuspensaoDTO;
 
 import br.com.ari.model.Estabelecimento;
@@ -33,6 +35,29 @@ public class EstabelecimentoController {
 
         this.estabelecimentoService = estabelecimentoService;
         this.funcionarioService = funcionarioService;
+    }
+
+    @PostMapping
+    public ResponseEntity<EstabelecimentoResponseDTO> criar(
+            @Valid @RequestBody EstabelecimentoRequestDTO dto) {
+
+        return ResponseEntity.status(201)
+                .body(converterParaResponse(estabelecimentoService.criar(dto)));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> atualizar(
+            @PathVariable Long id,
+            @Valid @RequestBody EstabelecimentoUpdateDTO dto) {
+
+        estabelecimentoService.atualizar(id, dto);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable Long id) {
+        estabelecimentoService.excluir(id);
+        return ResponseEntity.noContent().build();
     }
 
     // =====================================================
@@ -83,7 +108,7 @@ public class EstabelecimentoController {
     public ResponseEntity<Void> atualizarAcolhimento(
             Principal principal,
             @PathVariable Long id,
-            @Valid @RequestBody EstabelecimentoAcolhimentoDTO dto) {
+            @Valid @RequestBody EstabelecimentoAcolhimentoUpdateDTO dto) {
 
         validarAdmin(principal, id);
 

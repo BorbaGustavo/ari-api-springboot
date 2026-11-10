@@ -265,6 +265,13 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
         return jdbcTemplate.update(sql, id);
     }
 
+    public int excluirFisico(Long id) {
+        return jdbcTemplate.update(
+                "DELETE FROM T_ARI_ESTABELECIMENTO WHERE CD_ESTABELECIMENTO = ?",
+                id
+        );
+    }
+
     // BUSCAR ESTABELECIMENTOS POR CEP
     public List<Estabelecimento> buscarPorCep(String cep) {
 

@@ -191,4 +191,11 @@ public class UsuarioDAO implements CrudDAO<Usuario, Long> {
         return jdbcTemplate.update(sql, id);
     }
 
+    public int excluirFisico(Long id) {
+        return jdbcTemplate.update(
+                "DELETE FROM T_ARI_USUARIO WHERE CD_USUARIO = ?",
+                id
+        );
+    }
+
 }

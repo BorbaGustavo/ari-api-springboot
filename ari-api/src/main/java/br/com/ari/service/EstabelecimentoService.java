@@ -5,7 +5,7 @@ import br.com.ari.dao.EstabelecimentoDAO;
 
 import br.com.ari.dto.EstabelecimentoRequestDTO;
 import br.com.ari.dto.EstabelecimentoUpdateDTO;
-import br.com.ari.dto.EstabelecimentoAcolhimentoDTO;
+import br.com.ari.dto.EstabelecimentoAcolhimentoUpdateDTO;
 import br.com.ari.dto.EstabelecimentoSuspensaoDTO;
 
 import br.com.ari.model.Estabelecimento;
@@ -136,13 +136,17 @@ public class EstabelecimentoService {
         validarId(id);
         buscarEstabelecimentoExistente(id);
 
-        return estabelecimentoDAO.excluir(id);
+        try {
+            return estabelecimentoDAO.excluirFisico(id);
+        } catch (DataIntegrityViolationException e) {
+            return estabelecimentoDAO.excluir(id);
+        }
     }
 
     // HABILITAR OU DESABILITAR ACOLHIMENTO
     public int atualizarAcolhimento(
             Long id,
-            EstabelecimentoAcolhimentoDTO dto) {
+            EstabelecimentoAcolhimentoUpdateDTO dto) {
 
         validarId(id);
 

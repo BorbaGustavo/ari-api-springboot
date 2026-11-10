@@ -253,11 +253,9 @@ public class FuncionarioService {
             return funcionarioDAO.excluir(cdFuncionarioAlvo);
 
         } catch (DataIntegrityViolationException e) {
-
-            throw new IllegalStateException(
-                    "Não é possível excluir este funcionário, "
-                            + "pois existem registros históricos vinculados. "
-                            + "Inative o funcionário."
+            return funcionarioDAO.inativar(
+                    cdFuncionarioAlvo,
+                    admin.getCdEstabelecimento()
             );
         }
     }

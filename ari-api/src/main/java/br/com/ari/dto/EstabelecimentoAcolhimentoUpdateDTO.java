@@ -8,7 +8,7 @@ package br.com.ari.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
-public record EstabelecimentoAcolhimentoDTO(
+public record EstabelecimentoAcolhimentoUpdateDTO(
 
         @NotBlank(message = "Informe se o acolhimento está ativo.")
         @Pattern(
