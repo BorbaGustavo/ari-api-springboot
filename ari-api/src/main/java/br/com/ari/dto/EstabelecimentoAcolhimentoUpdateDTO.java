@@ -7,7 +7,9 @@ package br.com.ari.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "Configuração de recebimento de solicitações de acolhimento.")
 public record EstabelecimentoAcolhimentoUpdateDTO(
 
         @NotBlank(message = "Informe se o acolhimento está ativo.")
@@ -15,6 +17,7 @@ public record EstabelecimentoAcolhimentoUpdateDTO(
                 regexp = "S|N",
                 message = "O valor deve ser S ou N."
         )
+        @Schema(description = "S habilita o acolhimento; N desabilita.", example = "S", allowableValues = {"S", "N"}, requiredMode = Schema.RequiredMode.REQUIRED)
         String flAcolhimentoAtivo
 
 ) {}

@@ -15,12 +15,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.security.Principal;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/disponibilidades")
+@Tag(name = "Disponibilidades", description = "Grade semanal de atendimento do estabelecimento.")
 public class DisponibilidadeController {
 
     private final DisponibilidadeService disponibilidadeService;
@@ -40,6 +43,7 @@ public class DisponibilidadeController {
     // =====================================================
 
     @GetMapping
+    @Operation(summary = "Listar disponibilidades", description = "Lista a grade semanal do estabelecimento do administrador autenticado.")
     public ResponseEntity<List<DisponibilidadeResponseDTO>>
     buscarPorEstabelecimento(Principal principal) {
 
@@ -58,6 +62,7 @@ public class DisponibilidadeController {
     // =====================================================
 
     @PostMapping
+    @Operation(summary = "Cadastrar disponibilidade", description = "Adiciona um período de atendimento à grade semanal.")
     public ResponseEntity<DisponibilidadeResponseDTO> criar(
             Principal principal,
             @Valid @RequestBody DisponibilidadeRequestDTO dto) {
@@ -80,6 +85,7 @@ public class DisponibilidadeController {
     // =====================================================
 
     @PutMapping("/{id}")
+    @Operation(summary = "Atualizar disponibilidade", description = "Atualiza dia, período e horários de uma disponibilidade.")
     public ResponseEntity<DisponibilidadeResponseDTO> atualizar(
             Principal principal,
             @PathVariable Long id,
@@ -102,6 +108,7 @@ public class DisponibilidadeController {
     // =====================================================
 
     @PatchMapping("/{id}/status")
+    @Operation(summary = "Ativar ou desativar disponibilidade", description = "Use flAtivo=S para ativar ou flAtivo=N para desativar.")
     public ResponseEntity<Void> atualizarStatus(
             Principal principal,
             @PathVariable Long id,

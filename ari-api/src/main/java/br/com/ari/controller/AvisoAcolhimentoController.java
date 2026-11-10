@@ -13,12 +13,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.security.Principal;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/avisos-acolhimento")
+@Tag(name = "Avisos de acolhimento", description = "Solicitação, acompanhamento e confirmação do acolhimento.")
 public class AvisoAcolhimentoController {
 
     private final AvisoAcolhimentoService avisoAcolhimentoService;
@@ -39,7 +45,9 @@ public class AvisoAcolhimentoController {
 
     // Somente usuária com sessão válida pode solicitar.
     @PostMapping
+    @Operation(summary = "Solicitar acolhimento", description = "Cria uma solicitação para um estabelecimento usando uma sessão válida.", security = @SecurityRequirement(name = "sessionUuid"))
     public ResponseEntity<AvisoAcolhimentoResponseDTO> criar(
+            @Parameter(description = "UUID retornado no login da usuária.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER)
             @RequestHeader("X-Session-UUID") String uuid,
             @Valid @RequestBody AvisoAcolhimentoRequestDTO dto) {
 
@@ -56,7 +64,9 @@ public class AvisoAcolhimentoController {
     // =====================================================
 
     @GetMapping("/me/ativo")
+    @Operation(summary = "Consultar aviso ativo", description = "Retorna o aviso ativo da usuária ou 204 quando não houver aviso.", security = @SecurityRequirement(name = "sessionUuid"))
     public ResponseEntity<AvisoAcolhimentoResponseDTO> buscarAvisoAtivo(
+            @Parameter(description = "UUID retornado no login da usuária.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER)
             @RequestHeader("X-Session-UUID") String uuid) {
 
         return avisoAcolhimentoService.buscarAvisoAtivo(uuid)
@@ -70,7 +80,9 @@ public class AvisoAcolhimentoController {
 
     // Somente a usuária proprietária pode cancelar.
     @PatchMapping("/{id}/cancelar")
+    @Operation(summary = "Cancelar aviso", description = "Cancela um aviso pertencente à usuária da sessão.", security = @SecurityRequirement(name = "sessionUuid"))
     public ResponseEntity<AvisoAcolhimentoResponseDTO> cancelar(
+            @Parameter(description = "UUID retornado no login da usuária.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER)
             @RequestHeader("X-Session-UUID") String uuid,
             @PathVariable Long id) {
 
@@ -86,6 +98,7 @@ public class AvisoAcolhimentoController {
 
     // Funcionário ativo consulta os avisos da própria empresa.
     @GetMapping("/painel/pendentes")
+    @Operation(summary = "Listar avisos pendentes", description = "Lista avisos pendentes da empresa do funcionário autenticado.")
     public ResponseEntity<List<AvisoAcolhimentoResponseDTO>>
     buscarPendentes(Principal principal) {
 
@@ -105,6 +118,7 @@ public class AvisoAcolhimentoController {
 
     // Somente funcionário ativo, treinado e da empresa correta.
     @PatchMapping("/painel/{id}/confirmar")
+    @Operation(summary = "Confirmar acolhimento", description = "Confirma o acolhimento de um aviso por funcionário ativo e treinado.")
     public ResponseEntity<AvisoAcolhimentoResponseDTO> confirmar(
             Principal principal,
             @PathVariable Long id) {

@@ -14,12 +14,15 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.security.Principal;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/funcionarios")
+@Tag(name = "Funcionários", description = "Autenticação e administração dos funcionários de um estabelecimento.")
 public class FuncionarioController {
 
     private final FuncionarioService funcionarioService;
@@ -32,6 +35,7 @@ public class FuncionarioController {
     }
 
     @PostMapping
+    @Operation(summary = "Cadastrar funcionário", description = "Cria um funcionário no estabelecimento do administrador autenticado.")
     public ResponseEntity<Void> criar(
             Principal principal,
             @Valid @RequestBody FuncionarioRequestDTO dto) {
@@ -41,6 +45,7 @@ public class FuncionarioController {
     }
 
     @GetMapping
+    @Operation(summary = "Listar funcionários", description = "Lista os funcionários do estabelecimento do administrador autenticado.")
     public ResponseEntity<List<FuncionarioResponseDTO>> buscarPorEstabelecimento(
             Principal principal) {
 
@@ -52,6 +57,7 @@ public class FuncionarioController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Buscar funcionário", description = "Consulta um funcionário do estabelecimento do administrador autenticado.")
     public ResponseEntity<FuncionarioResponseDTO> buscarPorId(
             Principal principal,
             @PathVariable Long id) {
@@ -62,6 +68,7 @@ public class FuncionarioController {
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Atualizar funcionário", description = "Atualiza os dados editáveis de um funcionário.")
     public ResponseEntity<Void> atualizar(
             Principal principal,
             @PathVariable Long id,
@@ -72,6 +79,7 @@ public class FuncionarioController {
     }
 
     @PatchMapping("/{id}/senha")
+    @Operation(summary = "Alterar senha do funcionário", description = "Altera a senha de um funcionário.")
     public ResponseEntity<Void> atualizarSenha(
             Principal principal,
             @PathVariable Long id,
@@ -82,6 +90,7 @@ public class FuncionarioController {
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "Excluir funcionário", description = "Exclui um funcionário do estabelecimento.")
     public ResponseEntity<Void> excluir(
             Principal principal,
             @PathVariable Long id) {
@@ -122,6 +131,7 @@ public class FuncionarioController {
     // =====================================================
 
     @PostMapping("/login")
+    @Operation(summary = "Autenticar funcionário", description = "Valida as credenciais de login do funcionário.")
     public ResponseEntity<FuncionarioResponseDTO> autenticar(
             @Valid @RequestBody FuncionarioLoginDTO dto) {
 

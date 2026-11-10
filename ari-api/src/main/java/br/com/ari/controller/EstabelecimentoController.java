@@ -17,12 +17,16 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.security.Principal;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/estabelecimentos")
+@Tag(name = "Estabelecimentos", description = "Cadastro, localização e configuração do acolhimento.")
 public class EstabelecimentoController {
 
     private final EstabelecimentoService estabelecimentoService;
@@ -38,6 +42,7 @@ public class EstabelecimentoController {
     }
 
     @PostMapping
+    @Operation(summary = "Cadastrar estabelecimento", description = "Cria um estabelecimento e retorna seus dados.")
     public ResponseEntity<EstabelecimentoResponseDTO> criar(
             @Valid @RequestBody EstabelecimentoRequestDTO dto) {
 
@@ -46,6 +51,7 @@ public class EstabelecimentoController {
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Atualizar estabelecimento", description = "Atualiza os dados cadastrais do estabelecimento.")
     public ResponseEntity<Void> atualizar(
             @PathVariable Long id,
             @Valid @RequestBody EstabelecimentoUpdateDTO dto) {
@@ -55,6 +61,7 @@ public class EstabelecimentoController {
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "Excluir estabelecimento", description = "Exclui o estabelecimento identificado.")
     public ResponseEntity<Void> excluir(@PathVariable Long id) {
         estabelecimentoService.excluir(id);
         return ResponseEntity.noContent().build();
@@ -65,8 +72,11 @@ public class EstabelecimentoController {
     // =====================================================
 
     @GetMapping("/proximos")
+    @Operation(summary = "Buscar estabelecimentos próximos", description = "Retorna estabelecimentos próximos às coordenadas informadas.")
     public ResponseEntity<List<EstabelecimentoResponseDTO>> buscarProximos(
+            @Parameter(description = "Latitude entre -90 e 90.", example = "-23.5505")
             @RequestParam Double latitude,
+            @Parameter(description = "Longitude entre -180 e 180.", example = "-46.6333")
             @RequestParam Double longitude) {
 
         List<EstabelecimentoResponseDTO> estabelecimentos =
@@ -85,6 +95,7 @@ public class EstabelecimentoController {
     // =====================================================
 
     @GetMapping("/{id}")
+    @Operation(summary = "Buscar estabelecimento", description = "Consulta um estabelecimento ativo pelo identificador.")
     public ResponseEntity<EstabelecimentoResponseDTO> buscarPorId(
             @PathVariable Long id) {
 
@@ -105,6 +116,7 @@ public class EstabelecimentoController {
 
     // Somente ADMIN do estabelecimento pode alterar.
     @PatchMapping("/{id}/acolhimento")
+    @Operation(summary = "Ativar ou desativar acolhimento", description = "Altera se o estabelecimento recebe novas solicitações de acolhimento.")
     public ResponseEntity<Void> atualizarAcolhimento(
             Principal principal,
             @PathVariable Long id,
@@ -125,6 +137,7 @@ public class EstabelecimentoController {
     // Uma data futura configura a suspensão.
     // Uma data nula remove a suspensão.
     @PatchMapping("/{id}/suspensao")
+    @Operation(summary = "Configurar suspensão", description = "Configura uma data futura de suspensão ou remova a suspensão enviando dtSuspensaoAte como null.")
     public ResponseEntity<Void> atualizarSuspensao(
             Principal principal,
             @PathVariable Long id,

@@ -4,7 +4,9 @@ package br.com.ari.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "Dados editáveis da usuária.", example = "{\"nmUsuario\":\"Ana Souza\",\"nrTelefone\":\"11999999999\",\"dsEmail\":\"ana@example.com\"}")
 public record UsuarioUpdateDTO(
 
         @NotBlank(message = "Nome é obrigatório.")

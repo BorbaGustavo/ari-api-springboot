@@ -18,9 +18,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/usuarios")
+@Tag(name = "Usuárias", description = "Cadastro, manutenção e encerramento da sessão de usuárias.")
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
@@ -40,6 +47,7 @@ public class UsuarioController {
     // =====================================================
 
     @PostMapping
+    @Operation(summary = "Cadastrar usuária", description = "Cria uma nova conta de usuária.")
     public ResponseEntity<Void> criar(
             @Valid @RequestBody UsuarioRequestDTO dto) {
 
@@ -51,6 +59,7 @@ public class UsuarioController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Buscar usuária", description = "Consulta os dados públicos de uma usuária pelo identificador.")
     public ResponseEntity<UsuarioResponseDTO> buscarPorId(
             @PathVariable Long id) {
 
@@ -61,6 +70,7 @@ public class UsuarioController {
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Atualizar usuária", description = "Substitui os dados editáveis da usuária.")
     public ResponseEntity<Void> atualizar(
             @PathVariable Long id,
             @Valid @RequestBody UsuarioUpdateDTO dto) {
@@ -70,6 +80,7 @@ public class UsuarioController {
     }
 
     @PatchMapping("/{id}/senha")
+    @Operation(summary = "Alterar senha da usuária", description = "Atualiza a senha da usuária. A nova senha deve ter pelo menos 8 caracteres.")
     public ResponseEntity<Void> atualizarSenha(
             @PathVariable Long id,
             @Valid @RequestBody UsuarioSenhaUpdateDTO dto) {
@@ -79,6 +90,7 @@ public class UsuarioController {
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "Excluir usuária", description = "Exclui a usuária identificada.")
     public ResponseEntity<Void> excluir(@PathVariable Long id) {
         usuarioService.excluir(id);
         return ResponseEntity.noContent().build();
@@ -89,7 +101,13 @@ public class UsuarioController {
     // =====================================================
 
     @PostMapping("/logout")
+    @Operation(
+            summary = "Encerrar sessão",
+            description = "Revoga a sessão ativa identificada pelo header X-Session-UUID.",
+            security = @SecurityRequirement(name = "sessionUuid")
+    )
     public ResponseEntity<Void> sair(
+            @Parameter(description = "UUID retornado no login.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER)
             @RequestHeader("X-Session-UUID") String uuid) {
 
         SessaoWeb sessao = obterSessaoValida(uuid);

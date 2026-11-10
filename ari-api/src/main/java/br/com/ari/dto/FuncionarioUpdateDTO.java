@@ -5,7 +5,9 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "Dados editáveis do funcionário.", example = "{\"nmFuncionario\":\"Carlos Lima\",\"nrTelefone\":\"11988887777\",\"dsEmailLogin\":\"carlos@example.com\",\"tpPerfil\":\"ATENDENTE\",\"flTreinado\":\"S\"}")
 public record FuncionarioUpdateDTO(
 
         @NotBlank(message = "Nome é obrigatório.")

@@ -10,7 +10,9 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "Dados editáveis do estabelecimento.", example = "{\"nmRazaoSocial\":\"Instituição ARI\",\"nmFantasia\":\"ARI\",\"dsEmail\":\"contato@ari.example\",\"dsTipoEstabelecimento\":\"Centro de acolhimento\",\"nrCep\":\"01310100\",\"sgUf\":\"SP\",\"nrLatitude\":-23.561684,\"nrLongitude\":-46.655981}")
 public record EstabelecimentoUpdateDTO(
 
         @NotBlank(message = "Razão social é obrigatória.")

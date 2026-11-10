@@ -7,7 +7,9 @@ package br.com.ari.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "Dados editáveis de uma condição de apoio.", example = "{\"nmCondicao\":\"Atendimento em Libras\",\"dsCondicao\":\"Atendimento com intérprete de Libras.\"}")
 public record CondicaoApoioUpdateDTO(
 
         @NotBlank(message = "Nome da condição é obrigatório.")

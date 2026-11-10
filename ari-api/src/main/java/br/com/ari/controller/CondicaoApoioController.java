@@ -15,12 +15,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.security.Principal;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/condicoes-apoio")
+@Tag(name = "Condições de apoio", description = "Apoios oferecidos pelos estabelecimentos.")
 public class CondicaoApoioController {
 
     private final CondicaoApoioService condicaoApoioService;
@@ -41,6 +44,7 @@ public class CondicaoApoioController {
 
     // Utilizado pelo Front-end para apresentar os apoios oferecidos.
     @GetMapping("/estabelecimento/{id}/publicas")
+    @Operation(summary = "Listar condições públicas", description = "Retorna somente as condições ativas de um estabelecimento.")
     public ResponseEntity<List<CondicaoApoioResponseDTO>>
     buscarAtivasPublicas(@PathVariable Long id) {
 
@@ -56,6 +60,7 @@ public class CondicaoApoioController {
 
     // Somente ADMIN. Inclui condições ativas e inativas.
     @GetMapping
+    @Operation(summary = "Listar condições do estabelecimento", description = "Lista condições ativas e inativas do estabelecimento do administrador.")
     public ResponseEntity<List<CondicaoApoioResponseDTO>>
     buscarPorEstabelecimento(Principal principal) {
 
@@ -74,6 +79,7 @@ public class CondicaoApoioController {
     // =====================================================
 
     @PostMapping
+    @Operation(summary = "Cadastrar condição de apoio", description = "Cadastra uma condição de apoio para o estabelecimento.")
     public ResponseEntity<CondicaoApoioResponseDTO> criar(
             Principal principal,
             @Valid @RequestBody CondicaoApoioRequestDTO dto) {
@@ -96,6 +102,7 @@ public class CondicaoApoioController {
     // =====================================================
 
     @PutMapping("/{id}")
+    @Operation(summary = "Atualizar condição de apoio", description = "Atualiza o nome e a descrição de uma condição.")
     public ResponseEntity<CondicaoApoioResponseDTO> atualizar(
             Principal principal,
             @PathVariable Long id,
@@ -118,6 +125,7 @@ public class CondicaoApoioController {
     // =====================================================
 
     @PatchMapping("/{id}/status")
+    @Operation(summary = "Ativar ou desativar condição", description = "Use flAtivo=S para ativar ou flAtivo=N para desativar.")
     public ResponseEntity<Void> atualizarStatus(
             Principal principal,
             @PathVariable Long id,
