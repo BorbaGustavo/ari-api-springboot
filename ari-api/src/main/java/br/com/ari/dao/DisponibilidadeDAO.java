@@ -243,12 +243,11 @@ public class DisponibilidadeDAO
     // Preserva o registro e apenas altera FL_ATIVO para N.
     @Override
     public int excluir(Long id) {
-
         String sql = """
-                UPDATE T_ARI_DISPONIBILIDADE
-                SET FL_ATIVO = 'N'
-                WHERE CD_DISPONIBILIDADE = ?
-                """;
+            UPDATE T_ARI_DISPONIBILIDADE
+            SET FL_ATIVO = 'N'
+            WHERE CD_DISPONIBILIDADE = ?
+            """;
 
         return jdbcTemplate.update(sql, id);
     }

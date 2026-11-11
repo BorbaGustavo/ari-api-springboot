@@ -215,6 +215,7 @@ public class DisponibilidadeService {
         return converterParaResponse(disponibilidade);
     }
 
+
     // DESATIVAR DISPONIBILIDADE
     // Preserva o registro no banco, alterando FL_ATIVO para N.
     public int desativar(
@@ -234,8 +235,11 @@ public class DisponibilidadeService {
             );
         }
 
-        return disponibilidadeDAO.excluir(cdDisponibilidade);
+        disponibilidade.setFlAtivo("N");
+
+        return disponibilidadeDAO.atualizar(disponibilidade);
     }
+
 
     // REATIVAR DISPONIBILIDADE
     public int ativar(
@@ -412,16 +416,27 @@ public class DisponibilidadeService {
         }
     }
 
+
     // VALIDAR HORÁRIOS
     private void validarHorarios(String hrInicio, String hrFim) {
 
-        if (hrInicio == null || hrFim == null) {
+        if (hrInicio == null || hrFim == null
+                || hrInicio.isBlank() || hrFim.isBlank()) {
+
             throw new IllegalArgumentException(
                     "Horários de início e término são obrigatórios."
             );
         }
 
         try {
+
+            if (!hrInicio.matches("^([01][0-9]|2[0-3]):[0-5][0-9]$")
+                    || !hrFim.matches("^([01][0-9]|2[0-3]):[0-5][0-9]$")) {
+
+                throw new IllegalArgumentException(
+                        "Horários devem seguir o formato HH:mm."
+                );
+            }
 
             LocalTime inicio = LocalTime.parse(hrInicio);
             LocalTime fim = LocalTime.parse(hrFim);
