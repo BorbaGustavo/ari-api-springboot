@@ -161,4 +161,23 @@ public class FuncionarioController {
         ));
     }
 
+    @PostMapping("/logout")
+    @Operation(
+            summary = "Encerrar sessão do funcionário",
+            description = "Invalida a sessão autenticada do funcionário."
+    )
+    @Parameter(
+            name = "X-Funcionario-Session-UUID",
+            in = ParameterIn.HEADER,
+            required = true,
+            description = "UUID retornado no login."
+    )
+    public ResponseEntity<Void> logout(
+            @RequestHeader("X-Funcionario-Session-UUID") String uuid
+    ) {
+        funcionarioSessaoService.encerrar(uuid);
+        return ResponseEntity.noContent().build();
+    }
+
+
 }

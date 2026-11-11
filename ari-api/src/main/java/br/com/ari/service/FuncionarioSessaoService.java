@@ -47,6 +47,12 @@ public class FuncionarioSessaoService {
         return Optional.of(sessao);
     }
 
+    public void encerrar(String uuid) {
+        if (uuid != null && !uuid.isBlank()) {
+            sessoes.remove(uuid);
+        }
+    }
+
     public record Sessao(
             String uuid,
             String email,
