@@ -1,3 +1,4 @@
+
 package br.com.ari.config;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -19,15 +20,18 @@ public class CorsConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
+
         config.setAllowedOrigins(
                 Arrays.stream(allowedOrigins.split(","))
                         .map(String::trim)
                         .filter(origin -> !origin.isBlank())
                         .toList()
         );
+
         config.setAllowedMethods(
                 List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
         );
+
         config.setAllowedHeaders(
                 List.of(
                         "Content-Type",
@@ -36,10 +40,13 @@ public class CorsConfig {
                         "X-Funcionario-Session-UUID"
                 )
         );
+
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", config);
 
         return new CorsFilter(source);
