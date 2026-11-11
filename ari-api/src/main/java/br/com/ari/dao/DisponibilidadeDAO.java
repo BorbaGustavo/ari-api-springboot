@@ -239,8 +239,20 @@ public class DisponibilidadeDAO
         );
     }
 
+
     // DESATIVAR PERÍODO DE DISPONIBILIDADE
-    // Preserva o registro e apenas altera FL_ATIVO para N.
+    // Preserva o registro e altera FL_ATIVO para N.
+    public int desativar(Long id) {
+
+        String sql = """
+            UPDATE T_ARI_DISPONIBILIDADE
+            SET FL_ATIVO = 'N'
+            WHERE CD_DISPONIBILIDADE = ?
+            """;
+
+        return jdbcTemplate.update(sql, id);
+    }
+
     @Override
     public int excluir(Long id) {
         String sql = """
