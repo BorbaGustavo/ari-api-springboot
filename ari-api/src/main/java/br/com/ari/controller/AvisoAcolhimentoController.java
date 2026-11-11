@@ -4,6 +4,7 @@ package br.com.ari.controller;
 import br.com.ari.dto.AvisoAcolhimentoRequestDTO;
 import br.com.ari.dto.AvisoAcolhimentoResponseDTO;
 
+import br.com.ari.exception.NaoAutenticadoException;
 import br.com.ari.service.AvisoAcolhimentoService;
 import br.com.ari.service.FuncionarioService;
 
@@ -140,7 +141,7 @@ public class AvisoAcolhimentoController {
     private Long obterFuncionarioId(Principal principal) {
 
         if (principal == null || principal.getName() == null) {
-            throw new IllegalStateException(
+            throw new NaoAutenticadoException(
                     "Funcionário não autenticado."
             );
         }

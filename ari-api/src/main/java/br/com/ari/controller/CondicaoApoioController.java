@@ -6,6 +6,7 @@ import br.com.ari.dto.CondicaoApoioUpdateDTO;
 import br.com.ari.dto.CondicaoApoioResponseDTO;
 import br.com.ari.dto.CondicaoApoioStatusDTO;
 
+import br.com.ari.exception.NaoAutenticadoException;
 import br.com.ari.service.CondicaoApoioService;
 import br.com.ari.service.FuncionarioService;
 
@@ -158,7 +159,7 @@ public class CondicaoApoioController {
     private Long obterAdminId(Principal principal) {
 
         if (principal == null || principal.getName() == null) {
-            throw new IllegalStateException(
+            throw new NaoAutenticadoException(
                     "Funcionário não autenticado."
             );
         }

@@ -6,6 +6,7 @@ import br.com.ari.dto.DisponibilidadeUpdateDTO;
 import br.com.ari.dto.DisponibilidadeResponseDTO;
 import br.com.ari.dto.DisponibilidadeStatusDTO;
 
+import br.com.ari.exception.NaoAutenticadoException;
 import br.com.ari.service.DisponibilidadeService;
 import br.com.ari.service.FuncionarioService;
 
@@ -141,7 +142,7 @@ public class DisponibilidadeController {
     private Long obterAdminId(Principal principal) {
 
         if (principal == null || principal.getName() == null) {
-            throw new IllegalStateException(
+            throw new NaoAutenticadoException(
                     "Funcionário não autenticado."
             );
         }

@@ -29,7 +29,12 @@ public class CorsConfig {
                 List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
         );
         config.setAllowedHeaders(
-                List.of("Content-Type", "Authorization", "X-Session-UUID")
+                List.of(
+                        "Content-Type",
+                        "Authorization",
+                        "X-Session-UUID",
+                        "X-Funcionario-Session-UUID"
+                )
         );
         config.setAllowCredentials(true);
 

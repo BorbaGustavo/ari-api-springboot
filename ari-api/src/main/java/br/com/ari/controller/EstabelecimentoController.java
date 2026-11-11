@@ -7,6 +7,7 @@ import br.com.ari.dto.EstabelecimentoUpdateDTO;
 import br.com.ari.dto.EstabelecimentoAcolhimentoUpdateDTO;
 import br.com.ari.dto.EstabelecimentoSuspensaoDTO;
 
+import br.com.ari.exception.NaoAutenticadoException;
 import br.com.ari.model.Estabelecimento;
 
 import br.com.ari.service.EstabelecimentoService;
@@ -163,7 +164,7 @@ public class EstabelecimentoController {
             Long cdEstabelecimento) {
 
         if (principal == null || principal.getName() == null) {
-            throw new IllegalStateException(
+            throw new NaoAutenticadoException(
                     "Funcionário não autenticado."
             );
         }

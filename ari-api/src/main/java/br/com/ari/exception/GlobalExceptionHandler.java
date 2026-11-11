@@ -96,6 +96,19 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(NaoAutenticadoException.class)
+    public ResponseEntity<ApiErrorResponse> tratarNaoAutenticado(
+            NaoAutenticadoException exception,
+            HttpServletRequest request) {
+
+        return resposta(
+                HttpStatus.UNAUTHORIZED,
+                mensagem(exception),
+                request,
+                Map.of()
+        );
+    }
+
     private ResponseEntity<ApiErrorResponse> resposta(
             HttpStatus status,
             String message,
