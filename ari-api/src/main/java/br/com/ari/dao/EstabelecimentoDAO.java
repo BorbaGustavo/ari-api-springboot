@@ -257,6 +257,29 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
         );
     }
 
+    // ATUALIZAR STATUS DO ESTABELECIMENTO
+    public int atualizarStatus(Long id, String status) {
+
+        String sql = """
+            UPDATE T_ARI_ESTABELECIMENTO
+            SET
+                ST_ESTABELECIMENTO = ?,
+                FL_ACOLHIMENTO_ATIVO =
+                    CASE
+                        WHEN ? = 'INATIVO' THEN 'N'
+                        ELSE FL_ACOLHIMENTO_ATIVO
+                    END
+            WHERE CD_ESTABELECIMENTO = ?
+            """;
+
+        return jdbcTemplate.update(
+                sql,
+                status,
+                status,
+                id
+        );
+    }
+
     // DESATIVAR RECEBIMENTO DE ACOLHIMENTOS
     // Preserva o cadastro e o histórico do estabelecimento.
     @Override

@@ -1,22 +1,20 @@
-
 package br.com.ari.service;
 
 import br.com.ari.dao.DisponibilidadeDAO;
 import br.com.ari.dao.FuncionarioDAO;
-
 import br.com.ari.dto.DisponibilidadeRequestDTO;
 import br.com.ari.dto.DisponibilidadeUpdateDTO;
 import br.com.ari.dto.DisponibilidadeResponseDTO;
-
 import br.com.ari.model.Disponibilidade;
 import br.com.ari.model.Funcionario;
-
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class DisponibilidadeService {
@@ -24,36 +22,44 @@ public class DisponibilidadeService {
     private final DisponibilidadeDAO disponibilidadeDAO;
     private final FuncionarioDAO funcionarioDAO;
 
-    // CONSTRUTOR
     public DisponibilidadeService(
             DisponibilidadeDAO disponibilidadeDAO,
             FuncionarioDAO funcionarioDAO) {
-
         this.disponibilidadeDAO = disponibilidadeDAO;
         this.funcionarioDAO = funcionarioDAO;
     }
 
-    // CADASTRAR DISPONIBILIDADE
-    // Somente ADMIN pode cadastrar períodos da própria empresa.
+    // CADASTRAR UM NOVO PERÍODO NA GRADE SEMANAL
+    @Transactional
     public DisponibilidadeResponseDTO criar(
             Long cdFuncionarioAdmin,
             DisponibilidadeRequestDTO dto) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
-
         validarDadosCadastro(dto);
 
-        // VERIFICAR SE O PERÍODO JÁ EXISTE
+        Long cdEstabelecimento = admin.getCdEstabelecimento();
+
+        // A chave única do banco considera também os períodos inativos.
         validarPeriodoDuplicado(
-                admin.getCdEstabelecimento(),
+                cdEstabelecimento,
                 dto.nrDiaSemana(),
                 dto.nrPeriodo(),
                 null
         );
 
-        // CONVERTER DTO PARA MODEL
+        // Novos períodos começam ativos; portanto, não podem sobrepor
+        // outro período ativo do mesmo dia.
+        validarSobreposicao(
+                cdEstabelecimento,
+                dto.nrDiaSemana(),
+                dto.hrInicio(),
+                dto.hrFim(),
+                null
+        );
+
         Disponibilidade disponibilidade = Disponibilidade.builder()
-                .cdEstabelecimento(admin.getCdEstabelecimento())
+                .cdEstabelecimento(cdEstabelecimento)
                 .nrDiaSemana(dto.nrDiaSemana())
                 .nrPeriodo(dto.nrPeriodo())
                 .hrInicio(dto.hrInicio())
@@ -62,58 +68,43 @@ public class DisponibilidadeService {
                 .build();
 
         try {
+            int linhasAfetadas = disponibilidadeDAO.criar(disponibilidade);
 
-            int linhasAfetadas = disponibilidadeDAO.criar(
-                    disponibilidade
-            );
-
-            if (linhasAfetadas == 0
-                    || disponibilidade.getCdDisponibilidade() == null) {
-
+            if (linhasAfetadas == 0 || disponibilidade.getCdDisponibilidade() == null) {
                 throw new IllegalStateException(
                         "Não foi possível cadastrar a disponibilidade."
                 );
             }
-
         } catch (DataIntegrityViolationException e) {
-
             throw new IllegalArgumentException(
-                    "Não foi possível cadastrar. "
-                            + "Verifique se o período já existe nesse dia."
+                    "Não foi possível cadastrar. Verifique se o dia e o número do período já existem."
             );
         }
 
-        // RECUPERAR DISPONIBILIDADE CADASTRADA
-        Disponibilidade cadastrada = disponibilidadeDAO.buscarPorId(
-                disponibilidade.getCdDisponibilidade()
-        ).orElseThrow(() ->
-                new IllegalStateException(
-                        "Erro ao recuperar disponibilidade cadastrada."
-                )
-        );
+        Disponibilidade cadastrada = disponibilidadeDAO
+                .buscarPorId(disponibilidade.getCdDisponibilidade())
+                .orElseThrow(() -> new IllegalStateException(
+                        "Erro ao recuperar a disponibilidade cadastrada."
+                ));
 
         return converterParaResponse(cadastrada);
     }
 
-    // BUSCAR DISPONIBILIDADE POR ID
-    // ADMIN só consulta períodos da própria empresa.
+    // BUSCAR UM PERÍODO, GARANTINDO QUE PERTENCE AO ESTABELECIMENTO DO ADMIN
     public DisponibilidadeResponseDTO buscarPorId(
             Long cdFuncionarioAdmin,
             Long cdDisponibilidade) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
-
-        Disponibilidade disponibilidade =
-                buscarDisponibilidadeDaEmpresa(
-                        cdDisponibilidade,
-                        admin.getCdEstabelecimento()
-                );
+        Disponibilidade disponibilidade = buscarDisponibilidadeDaEmpresa(
+                cdDisponibilidade,
+                admin.getCdEstabelecimento()
+        );
 
         return converterParaResponse(disponibilidade);
     }
 
-    // LISTAR TODAS AS DISPONIBILIDADES DO ESTABELECIMENTO
-    // Inclui períodos ativos e inativos.
+    // LISTAR TODOS OS PERÍODOS, INCLUINDO OS INATIVOS
     public List<DisponibilidadeResponseDTO> buscarPorEstabelecimento(
             Long cdFuncionarioAdmin) {
 
@@ -126,7 +117,7 @@ public class DisponibilidadeService {
                 .toList();
     }
 
-    // LISTAR SOMENTE DISPONIBILIDADES ATIVAS
+    // LISTAR SOMENTE OS PERÍODOS ATIVOS
     public List<DisponibilidadeResponseDTO> buscarAtivas(
             Long cdFuncionarioAdmin) {
 
@@ -139,13 +130,12 @@ public class DisponibilidadeService {
                 .toList();
     }
 
-    // BUSCAR DISPONIBILIDADES POR DIA DA SEMANA
+    // LISTAR OS PERÍODOS ATIVOS DE UM DIA ESPECÍFICO
     public List<DisponibilidadeResponseDTO> buscarPorDiaSemana(
             Long cdFuncionarioAdmin,
             Integer nrDiaSemana) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
-
         validarDiaSemana(nrDiaSemana);
 
         return disponibilidadeDAO.buscarPorDiaSemana(
@@ -156,34 +146,43 @@ public class DisponibilidadeService {
                 .toList();
     }
 
-    // ATUALIZAR DISPONIBILIDADE
+    // ATUALIZAR DIA, NÚMERO DO PERÍODO OU HORÁRIOS
+    @Transactional
     public DisponibilidadeResponseDTO atualizar(
             Long cdFuncionarioAdmin,
             Long cdDisponibilidade,
             DisponibilidadeUpdateDTO dto) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
-
         validarDadosAtualizacao(dto);
 
-        // VERIFICAR SE A DISPONIBILIDADE PERTENCE À EMPRESA
+        Long cdEstabelecimento = admin.getCdEstabelecimento();
         Disponibilidade existente = buscarDisponibilidadeDaEmpresa(
                 cdDisponibilidade,
-                admin.getCdEstabelecimento()
+                cdEstabelecimento
         );
 
-        // VERIFICAR SE O NOVO PERÍODO JÁ ESTÁ CADASTRADO
         validarPeriodoDuplicado(
-                admin.getCdEstabelecimento(),
+                cdEstabelecimento,
                 dto.nrDiaSemana(),
                 dto.nrPeriodo(),
                 cdDisponibilidade
         );
 
-        // PRESERVAR IDENTIFICADOR, EMPRESA E STATUS
+        // Só precisa validar sobreposição se o registro continuar ativo.
+        if ("S".equals(existente.getFlAtivo())) {
+            validarSobreposicao(
+                    cdEstabelecimento,
+                    dto.nrDiaSemana(),
+                    dto.hrInicio(),
+                    dto.hrFim(),
+                    cdDisponibilidade
+            );
+        }
+
         Disponibilidade disponibilidade = Disponibilidade.builder()
                 .cdDisponibilidade(cdDisponibilidade)
-                .cdEstabelecimento(admin.getCdEstabelecimento())
+                .cdEstabelecimento(cdEstabelecimento)
                 .nrDiaSemana(dto.nrDiaSemana())
                 .nrPeriodo(dto.nrPeriodo())
                 .hrInicio(dto.hrInicio())
@@ -193,37 +192,29 @@ public class DisponibilidadeService {
                 .build();
 
         try {
-
-            int linhasAfetadas = disponibilidadeDAO.atualizar(
-                    disponibilidade
-            );
+            int linhasAfetadas = disponibilidadeDAO.atualizar(disponibilidade);
 
             if (linhasAfetadas == 0) {
                 throw new IllegalStateException(
                         "Não foi possível atualizar a disponibilidade."
                 );
             }
-
         } catch (DataIntegrityViolationException e) {
-
             throw new IllegalArgumentException(
-                    "Não foi possível atualizar. "
-                            + "Verifique se o período já existe nesse dia."
+                    "Não foi possível atualizar. Verifique se o dia e o número do período já existem."
             );
         }
 
         return converterParaResponse(disponibilidade);
     }
 
-
-    // DESATIVAR DISPONIBILIDADE
-    // Preserva o registro no banco, alterando FL_ATIVO para N.
+    // DESATIVAR UM PERÍODO SEM EXCLUÍ-LO DO BANCO
+    @Transactional
     public int desativar(
             Long cdFuncionarioAdmin,
             Long cdDisponibilidade) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
-
         Disponibilidade disponibilidade = buscarDisponibilidadeDaEmpresa(
                 cdDisponibilidade,
                 admin.getCdEstabelecimento()
@@ -236,18 +227,24 @@ public class DisponibilidadeService {
         }
 
         disponibilidade.setFlAtivo("N");
+        int linhasAfetadas = disponibilidadeDAO.atualizar(disponibilidade);
 
-        return disponibilidadeDAO.atualizar(disponibilidade);
+        if (linhasAfetadas == 0) {
+            throw new IllegalStateException(
+                    "Não foi possível desativar a disponibilidade."
+            );
+        }
+
+        return linhasAfetadas;
     }
 
-
-    // REATIVAR DISPONIBILIDADE
+    // REATIVAR UM PERÍODO JÁ CADASTRADO
+    @Transactional
     public int ativar(
             Long cdFuncionarioAdmin,
             Long cdDisponibilidade) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
-
         Disponibilidade existente = buscarDisponibilidadeDaEmpresa(
                 cdDisponibilidade,
                 admin.getCdEstabelecimento()
@@ -259,31 +256,42 @@ public class DisponibilidadeService {
             );
         }
 
+        // Ao reativar, validar para não criar conflito com outro horário ativo.
+        validarSobreposicao(
+                admin.getCdEstabelecimento(),
+                existente.getNrDiaSemana(),
+                existente.getHrInicio(),
+                existente.getHrFim(),
+                cdDisponibilidade
+        );
+
         existente.setFlAtivo("S");
 
         try {
+            int linhasAfetadas = disponibilidadeDAO.atualizar(existente);
 
-            return disponibilidadeDAO.atualizar(existente);
+            if (linhasAfetadas == 0) {
+                throw new IllegalStateException(
+                        "Não foi possível reativar a disponibilidade."
+                );
+            }
 
+            return linhasAfetadas;
         } catch (DataIntegrityViolationException e) {
-
             throw new IllegalArgumentException(
-                    "Não foi possível reativar a disponibilidade."
+                    "Não foi possível reativar. Verifique se existe conflito na grade semanal."
             );
         }
     }
 
-    // BUSCAR ADMIN AUTENTICADO
+    // LOCALIZAR E VALIDAR O ADMINISTRADOR
     private Funcionario buscarAdmin(Long id) {
-
         validarId(id);
 
         Funcionario admin = funcionarioDAO.buscarPorId(id)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Funcionário administrador não encontrado."
-                        )
-                );
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Funcionário administrador não encontrado."
+                ));
 
         if (!"ATIVO".equals(admin.getStFuncionario())) {
             throw new IllegalStateException(
@@ -297,27 +305,31 @@ public class DisponibilidadeService {
             );
         }
 
+        if (admin.getCdEstabelecimento() == null) {
+            throw new IllegalStateException(
+                    "O administrador não está vinculado a um estabelecimento."
+            );
+        }
+
         return admin;
     }
 
-    // BUSCAR DISPONIBILIDADE DA EMPRESA DO ADMIN
+    // BUSCAR UM PERÍODO E GARANTIR QUE PERTENCE À EMPRESA DO ADMIN
     private Disponibilidade buscarDisponibilidadeDaEmpresa(
             Long cdDisponibilidade,
             Long cdEstabelecimento) {
 
         validarId(cdDisponibilidade);
 
-        Disponibilidade disponibilidade =
-                disponibilidadeDAO.buscarPorId(cdDisponibilidade)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Disponibilidade não encontrada."
-                                )
-                        );
+        Disponibilidade disponibilidade = disponibilidadeDAO
+                .buscarPorId(cdDisponibilidade)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Disponibilidade não encontrada."
+                ));
 
-        if (!disponibilidade.getCdEstabelecimento()
-                .equals(cdEstabelecimento)) {
-
+        if (!Objects.equals(
+                disponibilidade.getCdEstabelecimento(),
+                cdEstabelecimento)) {
             throw new IllegalArgumentException(
                     "Esta disponibilidade não pertence ao seu estabelecimento."
             );
@@ -326,8 +338,8 @@ public class DisponibilidadeService {
         return disponibilidade;
     }
 
-    // VERIFICAR SE JÁ EXISTE O NÚMERO DO PERÍODO NO DIA
-    // A unicidade considera também períodos inativos.
+    // A CHAVE ÚNICA DO SQL CONSIDERA ESTABELECIMENTO + DIA + PERÍODO,
+    // INCLUSIVE QUANDO O REGISTRO ESTÁ INATIVO.
     private void validarPeriodoDuplicado(
             Long cdEstabelecimento,
             Integer nrDiaSemana,
@@ -338,30 +350,58 @@ public class DisponibilidadeService {
                 .buscarPorEstabelecimento(cdEstabelecimento)
                 .stream()
                 .anyMatch(disponibilidade ->
-
-                        disponibilidade.getNrDiaSemana()
-                                .equals(nrDiaSemana)
-
-                                && disponibilidade.getNrPeriodo()
-                                .equals(nrPeriodo)
-
-                                && (cdDisponibilidadeAtual == null
-                                || !disponibilidade.getCdDisponibilidade()
-                                .equals(cdDisponibilidadeAtual))
+                        Objects.equals(disponibilidade.getNrDiaSemana(), nrDiaSemana)
+                                && Objects.equals(disponibilidade.getNrPeriodo(), nrPeriodo)
+                                && !Objects.equals(
+                                disponibilidade.getCdDisponibilidade(),
+                                cdDisponibilidadeAtual
+                        )
                 );
 
         if (duplicado) {
             throw new IllegalArgumentException(
-                    "Já existe um período com esse número "
-                            + "cadastrado nesse dia."
+                    "Já existe um registro para esse número de período nesse dia. "
+                            + "Edite ou reative o registro existente."
             );
         }
     }
 
-    // VALIDAR DADOS DO CADASTRO
-    private void validarDadosCadastro(
-            DisponibilidadeRequestDTO dto) {
+    // IMPEDIR QUE DOIS PERÍODOS ATIVOS DO MESMO DIA SE SOBREPONHAM.
+    // Horários encostados (ex.: 08:00–12:00 e 12:00–18:00) são permitidos.
+    private void validarSobreposicao(
+            Long cdEstabelecimento,
+            Integer nrDiaSemana,
+            String hrInicio,
+            String hrFim,
+            Long cdDisponibilidadeAtual) {
 
+        LocalTime novoInicio = LocalTime.parse(hrInicio);
+        LocalTime novoFim = LocalTime.parse(hrFim);
+
+        boolean sobreposto = disponibilidadeDAO
+                .buscarPorEstabelecimento(cdEstabelecimento)
+                .stream()
+                .filter(disponibilidade -> "S".equals(disponibilidade.getFlAtivo()))
+                .filter(disponibilidade -> Objects.equals(
+                        disponibilidade.getNrDiaSemana(), nrDiaSemana))
+                .filter(disponibilidade -> !Objects.equals(
+                        disponibilidade.getCdDisponibilidade(), cdDisponibilidadeAtual))
+                .anyMatch(disponibilidade -> {
+                    LocalTime inicioExistente = LocalTime.parse(disponibilidade.getHrInicio());
+                    LocalTime fimExistente = LocalTime.parse(disponibilidade.getHrFim());
+
+                    return novoInicio.isBefore(fimExistente)
+                            && novoFim.isAfter(inicioExistente);
+                });
+
+        if (sobreposto) {
+            throw new IllegalArgumentException(
+                    "Este horário se sobrepõe a outro período ativo do mesmo dia."
+            );
+        }
+    }
+
+    private void validarDadosCadastro(DisponibilidadeRequestDTO dto) {
         if (dto == null) {
             throw new IllegalArgumentException(
                     "Dados da disponibilidade não informados."
@@ -370,17 +410,10 @@ public class DisponibilidadeService {
 
         validarDiaSemana(dto.nrDiaSemana());
         validarNumeroPeriodo(dto.nrPeriodo());
-
-        validarHorarios(
-                dto.hrInicio(),
-                dto.hrFim()
-        );
+        validarHorarios(dto.hrInicio(), dto.hrFim());
     }
 
-    // VALIDAR DADOS DA ATUALIZAÇÃO
-    private void validarDadosAtualizacao(
-            DisponibilidadeUpdateDTO dto) {
-
+    private void validarDadosAtualizacao(DisponibilidadeUpdateDTO dto) {
         if (dto == null) {
             throw new IllegalArgumentException(
                     "Dados da disponibilidade não informados."
@@ -389,16 +422,10 @@ public class DisponibilidadeService {
 
         validarDiaSemana(dto.nrDiaSemana());
         validarNumeroPeriodo(dto.nrPeriodo());
-
-        validarHorarios(
-                dto.hrInicio(),
-                dto.hrFim()
-        );
+        validarHorarios(dto.hrInicio(), dto.hrFim());
     }
 
-    // VALIDAR DIA DA SEMANA
     private void validarDiaSemana(Integer dia) {
-
         if (dia == null || dia < 1 || dia > 7) {
             throw new IllegalArgumentException(
                     "Dia da semana deve estar entre 1 e 7."
@@ -406,9 +433,7 @@ public class DisponibilidadeService {
         }
     }
 
-    // VALIDAR NÚMERO DO PERÍODO
     private void validarNumeroPeriodo(Integer periodo) {
-
         if (periodo == null || periodo < 1 || periodo > 99) {
             throw new IllegalArgumentException(
                     "Número do período deve estar entre 1 e 99."
@@ -416,23 +441,17 @@ public class DisponibilidadeService {
         }
     }
 
-
-    // VALIDAR HORÁRIOS
     private void validarHorarios(String hrInicio, String hrFim) {
-
         if (hrInicio == null || hrFim == null
                 || hrInicio.isBlank() || hrFim.isBlank()) {
-
             throw new IllegalArgumentException(
                     "Horários de início e término são obrigatórios."
             );
         }
 
         try {
-
             if (!hrInicio.matches("^([01][0-9]|2[0-3]):[0-5][0-9]$")
                     || !hrFim.matches("^([01][0-9]|2[0-3]):[0-5][0-9]$")) {
-
                 throw new IllegalArgumentException(
                         "Horários devem seguir o formato HH:mm."
                 );
@@ -446,19 +465,15 @@ public class DisponibilidadeService {
                         "O horário de término deve ser posterior ao início."
                 );
             }
-
         } catch (DateTimeParseException e) {
-
             throw new IllegalArgumentException(
                     "Horários devem seguir o formato HH:mm."
             );
         }
     }
 
-    // CONVERTER MODEL PARA RESPONSE DTO
     private DisponibilidadeResponseDTO converterParaResponse(
             Disponibilidade disponibilidade) {
-
         return new DisponibilidadeResponseDTO(
                 disponibilidade.getCdDisponibilidade(),
                 disponibilidade.getCdEstabelecimento(),
@@ -471,14 +486,11 @@ public class DisponibilidadeService {
         );
     }
 
-    // VALIDAR ID
     private void validarId(Long id) {
-
         if (id == null || id <= 0) {
             throw new IllegalArgumentException(
                     "Identificador inválido."
             );
         }
     }
-
 }

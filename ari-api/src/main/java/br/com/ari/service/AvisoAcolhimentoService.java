@@ -17,18 +17,23 @@ import br.com.ari.model.Estabelecimento;
 import br.com.ari.model.Disponibilidade;
 import br.com.ari.model.Funcionario;
 
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
-import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
 public class AvisoAcolhimentoService {
+
+    private static final ZoneId FUSO_HORARIO =
+            ZoneId.of("America/Sao_Paulo");
 
     private final AvisoAcolhimentoDAO avisoAcolhimentoDAO;
     private final UsuarioDAO usuarioDAO;
@@ -73,7 +78,7 @@ public class AvisoAcolhimentoService {
 
         validarId(dto.cdEstabelecimento());
 
-        // VALIDAR TEMPO ESTIMADO OPCIONAL
+        // VALIDAR TEMPO ESTIMADO INFORMADO
         if (dto.nrTempoEstimado() != null
                 && (dto.nrTempoEstimado() <= 0
                 || dto.nrTempoEstimado() > 99999)) {
@@ -82,6 +87,16 @@ public class AvisoAcolhimentoService {
                     "Tempo estimado deve estar entre 1 e 99999 minutos."
             );
         }
+
+        // DEFINIR TEMPO ESTIMADO
+        // Caso não informado, utilizar 60 minutos.
+        Integer tempoEstimado = dto.nrTempoEstimado() != null
+                ? dto.nrTempoEstimado()
+                : 60;
+
+        // EXPIRAR AVISOS VENCIDOS ANTES DE VERIFICAR
+        // SE A USUÁRIA POSSUI UM AVISO EM ANDAMENTO
+        expirarAvisosVencidos();
 
         // VERIFICAR SE A USUÁRIA JÁ POSSUI AVISO ATIVO
         if (avisoAcolhimentoDAO.buscarAvisoAtivoPorUsuario(
@@ -106,7 +121,7 @@ public class AvisoAcolhimentoService {
         validarEstabelecimentoDisponivel(estabelecimento);
 
         // CRIAR AVISO
-        // CD_USUARIO E CD_SESSAO_WEB SÃO OBTIDOS DA SESSÃO VALIDADA.
+        // CD_USUARIO E CD_SESSAO_WEB VÊM DA SESSÃO VALIDADA.
         // DT_AVISO E ST_AVISO SÃO DEFINIDOS PELOS DEFAULTS DO BANCO.
         AvisoAcolhimento aviso = AvisoAcolhimento.builder()
                 .cdUsuario(sessao.getCdUsuario())
@@ -114,7 +129,7 @@ public class AvisoAcolhimentoService {
                 .cdEstabelecimento(
                         estabelecimento.getCdEstabelecimento()
                 )
-                .nrTempoEstimado(dto.nrTempoEstimado())
+                .nrTempoEstimado(tempoEstimado)
                 .build();
 
         try {
@@ -129,13 +144,10 @@ public class AvisoAcolhimentoService {
                 );
             }
 
-        } catch (DataIntegrityViolationException e) {
-
-            // O ÍNDICE ÚNICO CONDICIONAL DO ORACLE
-            // TAMBÉM PROTEGE CONTRA REQUISIÇÕES SIMULTÂNEAS.
+        } catch (DuplicateKeyException e) {
             throw new IllegalStateException(
-                    "Não foi possível criar o aviso. "
-                            + "Verifique se já existe uma solicitação em andamento."
+                    "Você já possui uma solicitação de acolhimento em andamento.",
+                    e
             );
         }
 
@@ -162,6 +174,8 @@ public class AvisoAcolhimentoService {
 
         SessaoWeb sessao = obterSessaoValida(uuidSessao);
 
+        expirarAvisosVencidos();
+
         return avisoAcolhimentoDAO.buscarPorUsuario(
                         sessao.getCdUsuario()
                 ).stream()
@@ -178,10 +192,14 @@ public class AvisoAcolhimentoService {
 
         validarId(cdAviso);
 
+        expirarAvisosVencidos();
+
         AvisoAcolhimento aviso = buscarAvisoExistente(cdAviso);
 
         // GARANTIR QUE O AVISO PERTENCE À USUÁRIA
-        if (!aviso.getCdUsuario().equals(sessao.getCdUsuario())) {
+        if (!Objects.equals(
+                aviso.getCdUsuario(),
+                sessao.getCdUsuario())) {
 
             throw new IllegalArgumentException(
                     "Este aviso não pertence à sua conta."
@@ -196,6 +214,8 @@ public class AvisoAcolhimentoService {
             String uuidSessao) {
 
         SessaoWeb sessao = obterSessaoValida(uuidSessao);
+
+        expirarAvisosVencidos();
 
         return avisoAcolhimentoDAO.buscarAvisoAtivoPorUsuario(
                 sessao.getCdUsuario()
@@ -212,6 +232,8 @@ public class AvisoAcolhimentoService {
 
         Funcionario funcionario = buscarFuncionarioAtivo(cdFuncionario);
 
+        expirarAvisosVencidos();
+
         return avisoAcolhimentoDAO.buscarPorEstabelecimento(
                         funcionario.getCdEstabelecimento()
                 ).stream()
@@ -226,10 +248,11 @@ public class AvisoAcolhimentoService {
 
         Funcionario funcionario = buscarFuncionarioAtivo(cdFuncionario);
 
-        return avisoAcolhimentoDAO.buscarPorEstabelecimento(
+        expirarAvisosVencidos();
+
+        return avisoAcolhimentoDAO.buscarPendentesPorEstabelecimento(
                         funcionario.getCdEstabelecimento()
                 ).stream()
-                .filter(aviso -> "A_CAMINHO".equals(aviso.getStAviso()))
                 .map(this::converterParaResponse)
                 .toList();
     }
@@ -247,10 +270,14 @@ public class AvisoAcolhimentoService {
 
         validarId(cdAviso);
 
+        expirarAvisosVencidos();
+
         AvisoAcolhimento aviso = buscarAvisoExistente(cdAviso);
 
         // VERIFICAR PROPRIEDADE DO AVISO
-        if (!aviso.getCdUsuario().equals(sessao.getCdUsuario())) {
+        if (!Objects.equals(
+                aviso.getCdUsuario(),
+                sessao.getCdUsuario())) {
 
             throw new IllegalArgumentException(
                     "Você não pode cancelar o aviso de outra usuária."
@@ -299,11 +326,14 @@ public class AvisoAcolhimentoService {
 
         validarId(cdAviso);
 
+        expirarAvisosVencidos();
+
         AvisoAcolhimento aviso = buscarAvisoExistente(cdAviso);
 
         // VERIFICAR SE O AVISO PERTENCE À EMPRESA DO FUNCIONÁRIO
-        if (!aviso.getCdEstabelecimento()
-                .equals(funcionario.getCdEstabelecimento())) {
+        if (!Objects.equals(
+                aviso.getCdEstabelecimento(),
+                funcionario.getCdEstabelecimento())) {
 
             throw new IllegalArgumentException(
                     "Este aviso não pertence ao seu estabelecimento."
@@ -333,6 +363,43 @@ public class AvisoAcolhimentoService {
     }
 
     // =====================================================
+    // EXPIRAÇÃO DE AVISOS
+    // =====================================================
+
+    // EXPIRAR AVISOS QUE ULTRAPASSARAM O DOBRO
+    // DO TEMPO ESTIMADO.
+    private void expirarAvisosVencidos() {
+
+        LocalDateTime agora = LocalDateTime.now(FUSO_HORARIO);
+
+        List<AvisoAcolhimento> avisos =
+                avisoAcolhimentoDAO.buscarAvisosEmAndamento();
+
+        for (AvisoAcolhimento aviso : avisos) {
+
+            if (aviso.getDtAviso() == null) {
+                continue;
+            }
+
+            // PADRÃO DE 60 MINUTOS PARA REGISTROS NULOS
+            Integer tempoEstimado = aviso.getNrTempoEstimado() != null
+                    ? aviso.getNrTempoEstimado()
+                    : 60;
+
+            // EXPIRAR APÓS O DOBRO DO TEMPO ESTIMADO
+            LocalDateTime limite = aviso.getDtAviso()
+                    .plusMinutes(tempoEstimado * 2L);
+
+            if (!limite.isAfter(agora)) {
+
+                avisoAcolhimentoDAO.expirar(
+                        aviso.getCdAviso()
+                );
+            }
+        }
+    }
+
+    // =====================================================
     // VALIDAÇÕES DE NEGÓCIO
     // =====================================================
 
@@ -346,6 +413,13 @@ public class AvisoAcolhimentoService {
                                         + "Faça login novamente."
                         )
                 );
+
+        // IMPEDIR QUE SESSÕES ANÔNIMAS ACESSEM OPERAÇÕES DE USUÁRIA
+        if (sessao.getCdUsuario() == null) {
+            throw new IllegalStateException(
+                    "É necessário possuir uma conta para solicitar ou consultar avisos."
+            );
+        }
 
         // VERIFICAR SE A USUÁRIA AINDA EXISTE
         Usuario usuario = usuarioDAO.buscarPorId(
@@ -387,7 +461,7 @@ public class AvisoAcolhimentoService {
             );
         }
 
-        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime agora = LocalDateTime.now(FUSO_HORARIO);
 
         // VERIFICAR SUSPENSÃO TEMPORÁRIA
         if (estabelecimento.getDtSuspensaoAte() != null
@@ -509,5 +583,4 @@ public class AvisoAcolhimentoService {
             );
         }
     }
-
 }

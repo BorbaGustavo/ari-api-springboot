@@ -3,7 +3,6 @@ package br.com.ari.controller;
 
 import br.com.ari.dto.AvisoAcolhimentoRequestDTO;
 import br.com.ari.dto.AvisoAcolhimentoResponseDTO;
-
 import br.com.ari.exception.NaoAutenticadoException;
 import br.com.ari.service.AvisoAcolhimentoService;
 import br.com.ari.service.FuncionarioService;
@@ -12,8 +11,8 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.web.bind.annotation.*;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -24,7 +23,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/avisos-acolhimento")
-@Tag(name = "Avisos de acolhimento", description = "Solicitação, acompanhamento e confirmação do acolhimento.")
+@Tag(
+        name = "Avisos de acolhimento",
+        description = "Solicitação, acompanhamento e confirmação do acolhimento."
+)
 public class AvisoAcolhimentoController {
 
     private final AvisoAcolhimentoService avisoAcolhimentoService;
@@ -43,12 +45,20 @@ public class AvisoAcolhimentoController {
     // SOLICITAR ACOLHIMENTO
     // =====================================================
 
-    // Somente usuária com sessão válida pode solicitar.
     @PostMapping
-    @Operation(summary = "Solicitar acolhimento", description = "Cria uma solicitação para um estabelecimento usando uma sessão válida.")
+    @Operation(
+            summary = "Solicitar acolhimento",
+            description = "Cria uma solicitação utilizando uma sessão válida de uma usuária autenticada."
+    )
     public ResponseEntity<AvisoAcolhimentoResponseDTO> criar(
-            @Parameter(description = "UUID retornado no login da usuária.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER)
+
+            @Parameter(
+                    description = "UUID da sessão da usuária.",
+                    example = "550e8400-e29b-41d4-a716-446655440000",
+                    in = ParameterIn.HEADER
+            )
             @RequestHeader("X-Session-UUID") String uuid,
+
             @Valid @RequestBody AvisoAcolhimentoRequestDTO dto) {
 
         AvisoAcolhimentoResponseDTO resposta =
@@ -64,9 +74,17 @@ public class AvisoAcolhimentoController {
     // =====================================================
 
     @GetMapping("/me/ativo")
-    @Operation(summary = "Consultar aviso ativo", description = "Retorna o aviso ativo da usuária ou 204 quando não houver aviso.")
+    @Operation(
+            summary = "Consultar aviso ativo",
+            description = "Retorna o aviso ativo da usuária ou 204 quando não houver aviso."
+    )
     public ResponseEntity<AvisoAcolhimentoResponseDTO> buscarAvisoAtivo(
-            @Parameter(description = "UUID retornado no login da usuária.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER)
+
+            @Parameter(
+                    description = "UUID da sessão da usuária.",
+                    example = "550e8400-e29b-41d4-a716-446655440000",
+                    in = ParameterIn.HEADER
+            )
             @RequestHeader("X-Session-UUID") String uuid) {
 
         return avisoAcolhimentoService.buscarAvisoAtivo(uuid)
@@ -78,13 +96,24 @@ public class AvisoAcolhimentoController {
     // CANCELAR AVISO
     // =====================================================
 
-    // Somente a usuária proprietária pode cancelar.
     @PatchMapping("/{id}/cancelar")
-    @Operation(summary = "Cancelar aviso", description = "Cancela um aviso pertencente à usuária da sessão.")
+    @Operation(
+            summary = "Cancelar aviso",
+            description = "Cancela um aviso pertencente à usuária da sessão."
+    )
     public ResponseEntity<AvisoAcolhimentoResponseDTO> cancelar(
-            @Parameter(description = "UUID retornado no login da usuária.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER)
+
+            @Parameter(
+                    description = "UUID da sessão da usuária.",
+                    in = ParameterIn.HEADER
+            )
             @RequestHeader("X-Session-UUID") String uuid,
-            @PathVariable Long id) {
+
+            @Parameter(
+                    description = "Identificador do aviso.",
+                    example = "1"
+            )
+            @PathVariable("id") Long id) {
 
         AvisoAcolhimentoResponseDTO resposta =
                 avisoAcolhimentoService.cancelar(uuid, id);
@@ -96,9 +125,11 @@ public class AvisoAcolhimentoController {
     // VISUALIZAR AVISOS PENDENTES DA EMPRESA
     // =====================================================
 
-    // Funcionário ativo consulta os avisos da própria empresa.
     @GetMapping("/painel/pendentes")
-    @Operation(summary = "Listar avisos pendentes", description = "Lista avisos pendentes da empresa do funcionário autenticado.")
+    @Operation(
+            summary = "Listar avisos pendentes",
+            description = "Lista os avisos A_CAMINHO do estabelecimento do funcionário autenticado."
+    )
     public ResponseEntity<List<AvisoAcolhimentoResponseDTO>>
     buscarPendentes(Principal principal) {
 
@@ -116,12 +147,20 @@ public class AvisoAcolhimentoController {
     // CONFIRMAR ACOLHIMENTO
     // =====================================================
 
-    // Somente funcionário ativo, treinado e da empresa correta.
     @PatchMapping("/painel/{id}/confirmar")
-    @Operation(summary = "Confirmar acolhimento", description = "Confirma o acolhimento de um aviso por funcionário ativo e treinado.")
+    @Operation(
+            summary = "Confirmar acolhimento",
+            description = "Confirma o acolhimento por funcionário ativo, treinado e vinculado ao estabelecimento do aviso."
+    )
     public ResponseEntity<AvisoAcolhimentoResponseDTO> confirmar(
+
             Principal principal,
-            @PathVariable Long id) {
+
+            @Parameter(
+                    description = "Identificador do aviso.",
+                    example = "1"
+            )
+            @PathVariable("id") Long id) {
 
         Long cdFuncionario = obterFuncionarioId(principal);
 
@@ -150,5 +189,4 @@ public class AvisoAcolhimentoController {
                 principal.getName()
         );
     }
-
 }

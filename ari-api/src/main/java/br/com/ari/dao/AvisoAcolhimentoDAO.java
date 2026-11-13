@@ -2,6 +2,7 @@
 package br.com.ari.dao;
 
 import br.com.ari.model.AvisoAcolhimento;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -26,11 +27,13 @@ public class AvisoAcolhimentoDAO
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    // =====================================================
     // MAPEAMENTO DO RESULTADO DO BANCO PARA MODEL
+    // =====================================================
+
     private final RowMapper<AvisoAcolhimento> mapper =
             (rs, rowNum) -> mapearAviso(rs);
 
-    // MAPEAMENTO DOS ATRIBUTOS DO AVISO
     private static AvisoAcolhimento mapearAviso(ResultSet rs)
             throws SQLException {
 
@@ -40,6 +43,7 @@ public class AvisoAcolhimentoDAO
         Object funcionario = rs.getObject("CD_FUNCIONARIO");
 
         int tempoEstimado = rs.getInt("NR_TEMPO_ESTIMADO");
+
         Integer nrTempoEstimado = rs.wasNull()
                 ? null
                 : tempoEstimado;
@@ -69,7 +73,10 @@ public class AvisoAcolhimentoDAO
                 .build();
     }
 
+    // =====================================================
     // COLUNAS UTILIZADAS NAS CONSULTAS
+    // =====================================================
+
     private static final String COLUNAS = """
             CD_AVISO,
             CD_USUARIO,
@@ -82,7 +89,10 @@ public class AvisoAcolhimentoDAO
             DT_ACOLHIMENTO
             """;
 
+    // =====================================================
     // CADASTRAR AVISO DE ACOLHIMENTO
+    // =====================================================
+
     @Override
     public int criar(AvisoAcolhimento aviso) {
 
@@ -128,7 +138,10 @@ public class AvisoAcolhimentoDAO
         return linhasAfetadas;
     }
 
+    // =====================================================
     // BUSCAR AVISO POR ID
+    // =====================================================
+
     @Override
     public Optional<AvisoAcolhimento> buscarPorId(Long id) {
 
@@ -143,7 +156,10 @@ public class AvisoAcolhimentoDAO
                 .findFirst();
     }
 
+    // =====================================================
     // LISTAR TODOS OS AVISOS
+    // =====================================================
+
     public List<AvisoAcolhimento> buscarTodos() {
 
         String sql = """
@@ -155,8 +171,11 @@ public class AvisoAcolhimentoDAO
         return jdbcTemplate.query(sql, mapper);
     }
 
+    // =====================================================
     // BUSCAR AVISOS DE UMA USUÁRIA
     // Mantém o histórico de solicitações.
+    // =====================================================
+
     public List<AvisoAcolhimento> buscarPorUsuario(Long cdUsuario) {
 
         String sql = """
@@ -169,8 +188,10 @@ public class AvisoAcolhimentoDAO
         return jdbcTemplate.query(sql, mapper, cdUsuario);
     }
 
+    // =====================================================
     // BUSCAR AVISOS DE UM ESTABELECIMENTO
-    // Inclui avisos anteriores e atuais.
+    // =====================================================
+
     public List<AvisoAcolhimento> buscarPorEstabelecimento(
             Long cdEstabelecimento) {
 
@@ -188,8 +209,34 @@ public class AvisoAcolhimentoDAO
         );
     }
 
+    // =====================================================
+    // BUSCAR AVISOS PENDENTES DE UM ESTABELECIMENTO
+    // Retorna somente avisos A_CAMINHO.
+    // =====================================================
+
+    public List<AvisoAcolhimento> buscarPendentesPorEstabelecimento(
+            Long cdEstabelecimento) {
+
+        String sql = """
+                SELECT %s
+                FROM T_ARI_AVISO_ACOLHIMENTO
+                WHERE CD_ESTABELECIMENTO = ?
+                  AND ST_AVISO = 'A_CAMINHO'
+                ORDER BY DT_AVISO ASC
+                """.formatted(COLUNAS);
+
+        return jdbcTemplate.query(
+                sql,
+                mapper,
+                cdEstabelecimento
+        );
+    }
+
+    // =====================================================
     // BUSCAR AVISO ATIVO DE UMA USUÁRIA
     // Uma usuária pode ter somente um aviso A_CAMINHO.
+    // =====================================================
+
     public Optional<AvisoAcolhimento> buscarAvisoAtivoPorUsuario(
             Long cdUsuario) {
 
@@ -205,9 +252,12 @@ public class AvisoAcolhimentoDAO
                 .findFirst();
     }
 
+    // =====================================================
     // ATUALIZAR AVISO
-    // Altera os dados de estado e confirmação.
-    // A regra de transição deve ser validada no Service.
+    // Altera status e dados da confirmação.
+    // A regra de transição é validada no Service.
+    // =====================================================
+
     @Override
     public int atualizar(AvisoAcolhimento aviso) {
 
@@ -234,8 +284,46 @@ public class AvisoAcolhimentoDAO
         );
     }
 
+    // =====================================================
+    // BUSCAR TODOS OS AVISOS EM ANDAMENTO
+    // Utilizado pelo Service para verificar expiração.
+    // =====================================================
+
+    public List<AvisoAcolhimento> buscarAvisosEmAndamento() {
+
+        String sql = """
+                SELECT %s
+                FROM T_ARI_AVISO_ACOLHIMENTO
+                WHERE ST_AVISO = 'A_CAMINHO'
+                ORDER BY DT_AVISO ASC
+                """.formatted(COLUNAS);
+
+        return jdbcTemplate.query(sql, mapper);
+    }
+
+    // =====================================================
+    // EXPIRAR AVISO
+    // Atualiza somente avisos que ainda estão A_CAMINHO.
+    // O Service verifica se o prazo realmente venceu.
+    // =====================================================
+
+    public int expirar(Long cdAviso) {
+
+        String sql = """
+                UPDATE T_ARI_AVISO_ACOLHIMENTO
+                SET ST_AVISO = 'EXPIRADO'
+                WHERE CD_AVISO = ?
+                  AND ST_AVISO = 'A_CAMINHO'
+                """;
+
+        return jdbcTemplate.update(sql, cdAviso);
+    }
+
+    // =====================================================
     // CONFIRMAR ACOLHIMENTO
-    // Registra o funcionário responsável e a data da confirmação.
+    // Registra funcionário e data da confirmação.
+    // =====================================================
+
     public int confirmar(Long cdAviso, Long cdFuncionario) {
 
         String sql = """
@@ -255,8 +343,11 @@ public class AvisoAcolhimentoDAO
         );
     }
 
+    // =====================================================
     // CANCELAR AVISO
     // A usuária só pode cancelar o próprio aviso.
+    // =====================================================
+
     public int cancelar(Long cdAviso, Long cdUsuario) {
 
         String sql = """
@@ -277,10 +368,12 @@ public class AvisoAcolhimentoDAO
         );
     }
 
-    // EXCLUIR LOGICAMENTE / CANCELAR AVISO
-    // Método genérico da interface CrudDAO.
-    // Para cancelamentos feitos pela usuária, utilizar cancelar()
-    // com o ID da usuária autenticada.
+    // =====================================================
+    // CANCELAMENTO ADMINISTRATIVO
+    // Preserva o histórico do aviso no banco.
+    // A autorização deve ser validada pelo Service.
+    // =====================================================
+
     @Override
     public int excluir(Long id) {
 
@@ -296,5 +389,4 @@ public class AvisoAcolhimentoDAO
 
         return jdbcTemplate.update(sql, id);
     }
-
 }

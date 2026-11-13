@@ -1,4 +1,3 @@
-
 package br.com.ari.dto;
 
 import jakarta.validation.constraints.NotNull;
@@ -11,12 +10,19 @@ public record AvisoAcolhimentoRequestDTO(
 
         @NotNull(message = "Estabelecimento é obrigatório.")
         @Positive(message = "Identificador do estabelecimento inválido.")
-        @Schema(description = "Identificador do estabelecimento.", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(
+                description = "Identificador do estabelecimento.",
+                example = "1",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         Long cdEstabelecimento,
 
         @Positive(message = "Tempo estimado deve ser maior que zero.")
         @Max(value = 99999, message = "Tempo estimado excede o limite permitido.")
-        @Schema(description = "Tempo estimado de espera em minutos.", example = "30")
+        @Schema(
+                description = "Tempo estimado de espera em minutos. Caso não informado, será utilizado o padrão de 60 minutos.",
+                example = "30"
+        )
         Integer nrTempoEstimado
 
 ) {}

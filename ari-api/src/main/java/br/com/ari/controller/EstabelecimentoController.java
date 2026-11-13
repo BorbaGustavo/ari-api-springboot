@@ -1,11 +1,7 @@
 
 package br.com.ari.controller;
 
-import br.com.ari.dto.EstabelecimentoResponseDTO;
-import br.com.ari.dto.EstabelecimentoRequestDTO;
-import br.com.ari.dto.EstabelecimentoUpdateDTO;
-import br.com.ari.dto.EstabelecimentoAcolhimentoUpdateDTO;
-import br.com.ari.dto.EstabelecimentoSuspensaoDTO;
+import br.com.ari.dto.*;
 
 import br.com.ari.exception.NaoAutenticadoException;
 import br.com.ari.model.Estabelecimento;
@@ -15,9 +11,11 @@ import br.com.ari.service.FuncionarioService;
 
 import jakarta.validation.Valid;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,7 +25,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/estabelecimentos")
-@Tag(name = "Estabelecimentos", description = "Cadastro, localização e configuração do acolhimento.")
+@Tag(
+        name = "Estabelecimentos",
+        description = "Cadastro, localização e configuração do acolhimento."
+)
 public class EstabelecimentoController {
 
     private final EstabelecimentoService estabelecimentoService;
@@ -42,29 +43,64 @@ public class EstabelecimentoController {
         this.funcionarioService = funcionarioService;
     }
 
+    // =====================================================
+    // CADASTRAR ESTABELECIMENTO
+    // =====================================================
+
     @PostMapping
-    @Operation(summary = "Cadastrar estabelecimento", description = "Cria um estabelecimento e retorna seus dados.")
+    @Operation(
+            summary = "Cadastrar estabelecimento",
+            description = "Cria um estabelecimento e seu primeiro administrador."
+    )
     public ResponseEntity<EstabelecimentoResponseDTO> criar(
             @Valid @RequestBody EstabelecimentoRequestDTO dto) {
 
-        return ResponseEntity.status(201)
-                .body(converterParaResponse(estabelecimentoService.criar(dto)));
+        Estabelecimento estabelecimento =
+                estabelecimentoService.criar(dto);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(converterParaResponse(estabelecimento));
     }
 
+    // =====================================================
+    // ATUALIZAR ESTABELECIMENTO
+    // =====================================================
+
     @PutMapping("/{id}")
-    @Operation(summary = "Atualizar estabelecimento", description = "Atualiza os dados cadastrais do estabelecimento.")
+    @Operation(
+            summary = "Atualizar estabelecimento",
+            description = "Atualiza os dados operacionais e as coordenadas."
+    )
     public ResponseEntity<Void> atualizar(
+            Principal principal,
             @PathVariable Long id,
             @Valid @RequestBody EstabelecimentoUpdateDTO dto) {
 
+        validarAdmin(principal, id);
+
         estabelecimentoService.atualizar(id, dto);
+
         return ResponseEntity.noContent().build();
     }
 
+    // =====================================================
+    // EXCLUIR ESTABELECIMENTO
+    // =====================================================
+
     @DeleteMapping("/{id}")
-    @Operation(summary = "Excluir estabelecimento", description = "Exclui o estabelecimento identificado.")
-    public ResponseEntity<Void> excluir(@PathVariable Long id) {
+    @Operation(
+            summary = "Excluir estabelecimento",
+            description = "Exclui fisicamente o estabelecimento, caso não existam registros vinculados."
+    )
+    public ResponseEntity<Void> excluir(
+            Principal principal,
+            @PathVariable Long id) {
+
+        validarAdmin(principal, id);
+
         estabelecimentoService.excluir(id);
+
         return ResponseEntity.noContent().build();
     }
 
@@ -73,18 +109,30 @@ public class EstabelecimentoController {
     // =====================================================
 
     @GetMapping("/proximos")
-    @Operation(summary = "Buscar estabelecimentos próximos", description = "Retorna estabelecimentos próximos às coordenadas informadas.")
+    @Operation(
+            summary = "Buscar estabelecimentos próximos",
+            description = "Retorna estabelecimentos próximos às coordenadas informadas."
+    )
     public ResponseEntity<List<EstabelecimentoResponseDTO>> buscarProximos(
-            @Parameter(description = "Latitude entre -90 e 90.", example = "-23.5505")
+
+            @Parameter(
+                    description = "Latitude entre -90 e 90.",
+                    example = "-23.5505"
+            )
             @RequestParam Double latitude,
-            @Parameter(description = "Longitude entre -180 e 180.", example = "-46.6333")
+
+            @Parameter(
+                    description = "Longitude entre -180 e 180.",
+                    example = "-46.6333"
+            )
             @RequestParam Double longitude) {
 
         List<EstabelecimentoResponseDTO> estabelecimentos =
                 estabelecimentoService.buscarProximos(
                                 latitude,
                                 longitude
-                        ).stream()
+                        )
+                        .stream()
                         .map(this::converterParaResponse)
                         .toList();
 
@@ -96,16 +144,14 @@ public class EstabelecimentoController {
     // =====================================================
 
     @GetMapping("/{id}")
-    @Operation(summary = "Buscar estabelecimento", description = "Consulta um estabelecimento ativo pelo identificador.")
+    @Operation(
+            summary = "Buscar estabelecimento",
+            description = "Consulta um estabelecimento ativo pelo identificador."
+    )
     public ResponseEntity<EstabelecimentoResponseDTO> buscarPorId(
             @PathVariable Long id) {
 
-        return estabelecimentoService.buscarPorId(id)
-                .filter(estabelecimento ->
-                        "ATIVO".equals(
-                                estabelecimento.getStEstabelecimento()
-                        )
-                )
+        return estabelecimentoService.buscarPorIdAtivo(id)
                 .map(this::converterParaResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -115,9 +161,11 @@ public class EstabelecimentoController {
     // HABILITAR OU DESABILITAR ACOLHIMENTO
     // =====================================================
 
-    // Somente ADMIN do estabelecimento pode alterar.
     @PatchMapping("/{id}/acolhimento")
-    @Operation(summary = "Ativar ou desativar acolhimento", description = "Altera se o estabelecimento recebe novas solicitações de acolhimento.")
+    @Operation(
+            summary = "Ativar ou desativar acolhimento",
+            description = "Altera se o estabelecimento recebe novas solicitações de acolhimento."
+    )
     public ResponseEntity<Void> atualizarAcolhimento(
             Principal principal,
             @PathVariable Long id,
@@ -134,11 +182,11 @@ public class EstabelecimentoController {
     // CONFIGURAR OU REMOVER SUSPENSÃO TEMPORÁRIA
     // =====================================================
 
-    // Somente ADMIN do estabelecimento pode alterar.
-    // Uma data futura configura a suspensão.
-    // Uma data nula remove a suspensão.
     @PatchMapping("/{id}/suspensao")
-    @Operation(summary = "Configurar suspensão", description = "Configura uma data futura de suspensão ou remova a suspensão enviando dtSuspensaoAte como null.")
+    @Operation(
+            summary = "Configurar suspensão",
+            description = "Informa uma data futura para suspender ou null para remover a suspensão."
+    )
     public ResponseEntity<Void> atualizarSuspensao(
             Principal principal,
             @PathVariable Long id,
@@ -146,11 +194,19 @@ public class EstabelecimentoController {
 
         validarAdmin(principal, id);
 
-        if (dto.dtSuspensaoAte() == null) {
-            estabelecimentoService.removerSuspensao(id);
-        } else {
-            estabelecimentoService.atualizarSuspensao(id, dto);
-        }
+        estabelecimentoService.atualizarSuspensao(id, dto);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Void> atualizarStatus(
+            Principal principal,
+            @PathVariable Long id,
+            @Valid @RequestBody EstabelecimentoStatusUpdateDTO dto) {
+
+        validarAdmin(principal, id);
+        estabelecimentoService.atualizarStatus(id, dto);
 
         return ResponseEntity.noContent().build();
     }
@@ -206,5 +262,4 @@ public class EstabelecimentoController {
                 estabelecimento.getDtCadastro()
         );
     }
-
 }

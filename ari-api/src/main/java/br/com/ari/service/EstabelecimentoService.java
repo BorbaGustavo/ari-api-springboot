@@ -2,22 +2,18 @@
 package br.com.ari.service;
 
 import br.com.ari.dao.EstabelecimentoDAO;
-
-import br.com.ari.dto.EstabelecimentoRequestDTO;
-import br.com.ari.dto.EstabelecimentoUpdateDTO;
-import br.com.ari.dto.EstabelecimentoAcolhimentoUpdateDTO;
-import br.com.ari.dto.EstabelecimentoSuspensaoDTO;
+import br.com.ari.dto.*;
 import br.com.ari.integration.BrasilApiCepResponse;
 import br.com.ari.integration.BrasilApiCnpjResponse;
 import br.com.ari.integration.BrasilApiService;
-import br.com.ari.dto.ResponsavelEstabelecimentoRequestDTO;
-
 import br.com.ari.model.Estabelecimento;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -29,7 +25,6 @@ public class EstabelecimentoService {
     private final BrasilApiService brasilApiService;
     private final FuncionarioService funcionarioService;
 
-    // CONSTRUTOR
     public EstabelecimentoService(
             EstabelecimentoDAO estabelecimentoDAO,
             BrasilApiService brasilApiService,
@@ -46,27 +41,35 @@ public class EstabelecimentoService {
 
         validarDadosCadastro(dto);
 
-        String cnpj = dto.nrCnpj().trim();
-        validarDadosBrasilApi(
-                cnpj,
-                dto.nrCep()
-        );
+        String cnpj = somenteDigitos(dto.nrCnpj());
 
-        // VERIFICAR SE O CNPJ JÁ ESTÁ CADASTRADO
+        BrasilApiCnpjResponse dadosCnpj =
+                brasilApiService.consultarCnpj(cnpj);
+
+        validarDadosCnpj(dadosCnpj, cnpj);
+
+        BrasilApiCepResponse dadosCep =
+                brasilApiService.consultarCep(
+                        somenteDigitos(dadosCnpj.cep())
+                );
+
+        validarDadosCep(dadosCnpj, dadosCep);
+
         if (estabelecimentoDAO.buscarPorCnpj(cnpj).isPresent()) {
             throw new IllegalArgumentException(
                     "Este CNPJ já está cadastrado."
             );
         }
 
-        // CONVERTER DTO PARA MODEL
-        Estabelecimento estabelecimento = converterParaModel(dto);
+        Estabelecimento estabelecimento =
+                converterParaModel(dto, dadosCnpj, dadosCep);
 
         try {
 
-            int linhasAfetadas = estabelecimentoDAO.criar(estabelecimento);
+            int linhasAfetadas =
+                    estabelecimentoDAO.criar(estabelecimento);
 
-            if (linhasAfetadas == 0) {
+            if (linhasAfetadas != 1) {
                 throw new IllegalStateException(
                         "Não foi possível cadastrar o estabelecimento."
                 );
@@ -75,19 +78,22 @@ public class EstabelecimentoService {
         } catch (DataIntegrityViolationException e) {
 
             throw new IllegalArgumentException(
-                    "Não foi possível cadastrar. "
-                            + "Verifique se o CNPJ já está cadastrado."
+                    "Não foi possível cadastrar o estabelecimento. "
+                            + "Verifique se o CNPJ já está cadastrado "
+                            + "ou se algum dado viola as regras do banco.",
+                    e
             );
         }
 
-        // RECUPERAR ESTABELECIMENTO CADASTRADO
-        Estabelecimento criado = estabelecimentoDAO.buscarPorCnpj(cnpj)
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Erro ao recuperar estabelecimento cadastrado."
-                        )
-                );
+        Estabelecimento criado =
+                estabelecimentoDAO.buscarPorCnpj(cnpj)
+                        .orElseThrow(() ->
+                                new IllegalStateException(
+                                        "Erro ao recuperar estabelecimento cadastrado."
+                                )
+                        );
 
+        // CADASTRAR O PRIMEIRO ADMINISTRADOR NA MESMA TRANSAÇÃO
         funcionarioService.criarAdministradorInicial(
                 criado.getCdEstabelecimento(),
                 dto.responsavel()
@@ -97,7 +103,6 @@ public class EstabelecimentoService {
     }
 
     // LISTAR TODOS OS ESTABELECIMENTOS
-    // A autorização dessa operação deve ser definida no Controller/Security.
     public List<Estabelecimento> buscarTodos() {
 
         return estabelecimentoDAO.buscarTodos();
@@ -111,6 +116,17 @@ public class EstabelecimentoService {
         return estabelecimentoDAO.buscarPorId(id);
     }
 
+    // BUSCAR ESTABELECIMENTO POR ATIVO
+    public Optional<Estabelecimento> buscarPorIdAtivo(Long id) {
+
+        validarId(id);
+
+        return estabelecimentoDAO.buscarPorId(id)
+                .filter(estabelecimento ->
+                        "ATIVO".equals(estabelecimento.getStEstabelecimento())
+                );
+    }
+
     // ATUALIZAR DADOS CADASTRAIS
     public int atualizar(
             Long id,
@@ -119,55 +135,61 @@ public class EstabelecimentoService {
         validarId(id);
         validarDadosAtualizacao(dto);
 
-        Estabelecimento existente = estabelecimentoDAO.buscarPorId(id)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Estabelecimento não encontrado."
-                        )
+        Estabelecimento existente =
+                buscarEstabelecimentoExistente(id);
+
+        String cnpj = somenteDigitos(existente.getNrCnpj());
+
+        // RECUPERAR NOVAMENTE OS DADOS OFICIAIS
+        BrasilApiCnpjResponse dadosCnpj =
+                brasilApiService.consultarCnpj(cnpj);
+
+        validarDadosCnpj(dadosCnpj, cnpj);
+
+        BrasilApiCepResponse dadosCep =
+                brasilApiService.consultarCep(
+                        somenteDigitos(dadosCnpj.cep())
                 );
 
-        validarDadosBrasilApi(
-                existente.getNrCnpj(),
-                dto.nrCep()
-        );
+        validarDadosCep(dadosCnpj, dadosCep);
 
-        // PRESERVAR CNPJ, ESTADO E CONTROLES OPERACIONAIS
-        // A atualização cadastral não altera esses campos.
-        Estabelecimento estabelecimento = converterParaModel(dto);
 
-        estabelecimento.setCdEstabelecimento(id);
-        estabelecimento.setNrCnpj(existente.getNrCnpj());
-
-        estabelecimento.setFlAcolhimentoAtivo(
-                existente.getFlAcolhimentoAtivo()
-        );
-
-        estabelecimento.setDtSuspensaoAte(
-                existente.getDtSuspensaoAte()
-        );
-
-        estabelecimento.setStEstabelecimento(
-                existente.getStEstabelecimento()
-        );
-
-        estabelecimento.setDtCadastro(
-                existente.getDtCadastro()
-        );
+        Estabelecimento estabelecimento =
+                converterParaModel(
+                        dto,
+                        existente,
+                        dadosCnpj,
+                        dadosCep
+                );
 
         return estabelecimentoDAO.atualizar(estabelecimento);
     }
 
-    // DESATIVAR RECEBIMENTO DE ACOLHIMENTOS
-    // Preserva o cadastro e o histórico do estabelecimento.
+    // EXCLUIR ESTABELECIMENTO FISICAMENTE
     public int excluir(Long id) {
 
         validarId(id);
         buscarEstabelecimentoExistente(id);
 
         try {
-            return estabelecimentoDAO.excluirFisico(id);
+
+            int linhasAfetadas =
+                    estabelecimentoDAO.excluirFisico(id);
+
+            if (linhasAfetadas == 0) {
+                throw new IllegalArgumentException(
+                        "Estabelecimento não encontrado."
+                );
+            }
+
+            return linhasAfetadas;
+
         } catch (DataIntegrityViolationException e) {
-            return estabelecimentoDAO.excluir(id);
+
+            throw new IllegalStateException(
+                    "Não é possível excluir o estabelecimento porque existem registros vinculados.",
+                    e
+            );
         }
     }
 
@@ -191,7 +213,6 @@ public class EstabelecimentoService {
         Estabelecimento estabelecimento =
                 buscarEstabelecimentoExistente(id);
 
-        // SOMENTE ESTABELECIMENTOS ATIVOS PODEM HABILITAR ACOLHIMENTO
         if ("S".equals(dto.flAcolhimentoAtivo())
                 && !"ATIVO".equals(estabelecimento.getStEstabelecimento())) {
 
@@ -207,22 +228,18 @@ public class EstabelecimentoService {
         return estabelecimentoDAO.atualizar(estabelecimento);
     }
 
-    // CONFIGURAR SUSPENSÃO TEMPORÁRIA
-    public int suspenderAcolhimento(
+    // CONFIGURAR OU REMOVER SUSPENSÃO TEMPORÁRIA
+    // DATA FUTURA = SUSPENDER
+    // NULL = REMOVER SUSPENSÃO
+    public int atualizarSuspensao(
             Long id,
             EstabelecimentoSuspensaoDTO dto) {
 
         validarId(id);
 
-        if (dto == null || dto.dtSuspensaoAte() == null) {
+        if (dto == null) {
             throw new IllegalArgumentException(
-                    "Data de suspensão não informada."
-            );
-        }
-
-        if (!dto.dtSuspensaoAte().isAfter(LocalDateTime.now())) {
-            throw new IllegalArgumentException(
-                    "A data de suspensão deve estar no futuro."
+                    "Dados da suspensão não informados."
             );
         }
 
@@ -235,7 +252,14 @@ public class EstabelecimentoService {
             );
         }
 
-        // A GRADE SEMANAL NÃO É ALTERADA
+        if (dto.dtSuspensaoAte() != null
+                && !dto.dtSuspensaoAte().isAfter(LocalDateTime.now())) {
+
+            throw new IllegalArgumentException(
+                    "A data de suspensão deve estar no futuro."
+            );
+        }
+
         estabelecimento.setDtSuspensaoAte(
                 dto.dtSuspensaoAte()
         );
@@ -243,17 +267,59 @@ public class EstabelecimentoService {
         return estabelecimentoDAO.atualizar(estabelecimento);
     }
 
-    // REMOVER SUSPENSÃO TEMPORÁRIA
+    // COMPATIBILIDADE COM CHAMADAS EXISTENTES
+    public int suspenderAcolhimento(
+            Long id,
+            EstabelecimentoSuspensaoDTO dto) {
+
+        return atualizarSuspensao(id, dto);
+    }
+
     public int removerSuspensao(Long id) {
+
+        return atualizarSuspensao(
+                id,
+                new EstabelecimentoSuspensaoDTO(null)
+        );
+    }
+
+    // ATIVAR OU DESATIVAR ESTABELECIMENTO
+    public int atualizarStatus(
+            Long id,
+            EstabelecimentoStatusUpdateDTO dto) {
 
         validarId(id);
 
-        Estabelecimento estabelecimento =
-                buscarEstabelecimentoExistente(id);
+        if (dto == null
+                || dto.stEstabelecimento() == null) {
 
-        estabelecimento.setDtSuspensaoAte(null);
+            throw new IllegalArgumentException(
+                    "Informe o status do estabelecimento."
+            );
+        }
 
-        return estabelecimentoDAO.atualizar(estabelecimento);
+        String status = dto.stEstabelecimento();
+
+        if (!"ATIVO".equals(status)
+                && !"INATIVO".equals(status)) {
+
+            throw new IllegalArgumentException(
+                    "Status inválido. Utilize ATIVO ou INATIVO."
+            );
+        }
+
+        buscarEstabelecimentoExistente(id);
+
+        int linhasAfetadas =
+                estabelecimentoDAO.atualizarStatus(id, status);
+
+        if (linhasAfetadas == 0) {
+            throw new IllegalArgumentException(
+                    "Estabelecimento não encontrado."
+            );
+        }
+
+        return linhasAfetadas;
     }
 
     // BUSCAR ESTABELECIMENTOS PRÓXIMOS
@@ -282,13 +348,15 @@ public class EstabelecimentoService {
     // BUSCAR ESTABELECIMENTOS POR CEP
     public List<Estabelecimento> buscarPorCep(String cep) {
 
-        if (cep == null || !cep.matches("\\d{8}")) {
+        String cepNormalizado = somenteDigitos(cep);
+
+        if (!cepNormalizado.matches("\\d{8}")) {
             throw new IllegalArgumentException(
                     "CEP inválido. Informe 8 dígitos."
             );
         }
 
-        return estabelecimentoDAO.buscarPorCep(cep);
+        return estabelecimentoDAO.buscarPorCep(cepNormalizado);
     }
 
     // BUSCAR ESTABELECIMENTO EXISTENTE
@@ -313,23 +381,13 @@ public class EstabelecimentoService {
 
         validarCnpj(dto.nrCnpj());
 
-        if (dto.nmRazaoSocial() == null
-                || dto.nmRazaoSocial().isBlank()) {
-
-            throw new IllegalArgumentException(
-                    "Razão social é obrigatória."
-            );
-        }
-
         if (dto.nmEmpresa() == null || dto.nmEmpresa().isBlank()) {
             throw new IllegalArgumentException(
                     "Nome da empresa é obrigatório."
             );
         }
 
-        if (dto.dsEmail() == null
-                || dto.dsEmail().isBlank()) {
-
+        if (dto.dsEmail() == null || dto.dsEmail().isBlank()) {
             throw new IllegalArgumentException(
                     "E-mail é obrigatório."
             );
@@ -342,48 +400,14 @@ public class EstabelecimentoService {
                     "Tipo de estabelecimento é obrigatório."
             );
         }
-    }
 
-    private void validarDadosBrasilApi(
-            String cnpj,
-            String cep) {
+        validarCoordenadas(dto.nrLatitude(), dto.nrLongitude());
 
-        BrasilApiCnpjResponse dadosCnpj =
-                brasilApiService.consultarCnpj(cnpj);
-
-        if (!"ATIVA".equalsIgnoreCase(
-                normalizar(dadosCnpj.descricaoSituacaoCadastral()))) {
-
+        if (dto.responsavel() == null) {
             throw new IllegalArgumentException(
-                    "O CNPJ não está ativo na Receita Federal."
+                    "Responsável pelo estabelecimento é obrigatório."
             );
         }
-
-        if (cep == null || cep.isBlank()) {
-            return;
-        }
-
-        BrasilApiCepResponse dadosCep =
-                brasilApiService.consultarCep(cep);
-        if (dadosCep.cep() == null || dadosCep.cep().isBlank()) {
-            throw new IllegalArgumentException(
-                    "O CEP informado não foi encontrado."
-            );
-        }
-    }
-
-    private String normalizar(String valor) {
-        if (valor == null) {
-            return "";
-        }
-
-        return java.text.Normalizer.normalize(
-                        valor,
-                        java.text.Normalizer.Form.NFD
-                )
-                .replaceAll("\\p{M}", "")
-                .replaceAll("[^A-Za-z0-9]", "")
-                .toUpperCase();
     }
 
     // VALIDAR DADOS DA ATUALIZAÇÃO
@@ -396,13 +420,6 @@ public class EstabelecimentoService {
             );
         }
 
-        if (dto.nmRazaoSocial() == null
-                || dto.nmRazaoSocial().isBlank()) {
-
-            throw new IllegalArgumentException(
-                    "Razão social é obrigatória."
-            );
-        }
 
         if (dto.nmEmpresa() == null || dto.nmEmpresa().isBlank()) {
             throw new IllegalArgumentException(
@@ -410,9 +427,7 @@ public class EstabelecimentoService {
             );
         }
 
-        if (dto.dsEmail() == null
-                || dto.dsEmail().isBlank()) {
-
+        if (dto.dsEmail() == null || dto.dsEmail().isBlank()) {
             throw new IllegalArgumentException(
                     "E-mail é obrigatório."
             );
@@ -423,6 +438,138 @@ public class EstabelecimentoService {
 
             throw new IllegalArgumentException(
                     "Tipo de estabelecimento é obrigatório."
+            );
+        }
+
+        if ((dto.nrLatitude() == null) != (dto.nrLongitude() == null)) {
+            throw new IllegalArgumentException(
+                    "Latitude e longitude devem ser informadas juntas."
+            );
+        }
+
+        if (dto.nrLatitude() != null) {
+            validarCoordenadas(
+                    dto.nrLatitude(),
+                    dto.nrLongitude()
+            );
+        }
+    }
+
+    // VALIDAR COORDENADAS
+    private void validarCoordenadas(
+            BigDecimal latitude,
+            BigDecimal longitude) {
+
+        if (latitude == null || longitude == null) {
+            throw new IllegalArgumentException(
+                    "Latitude e longitude são obrigatórias."
+            );
+        }
+
+        if (latitude.compareTo(BigDecimal.valueOf(-90)) < 0
+                || latitude.compareTo(BigDecimal.valueOf(90)) > 0) {
+
+            throw new IllegalArgumentException(
+                    "Latitude deve estar entre -90 e 90."
+            );
+        }
+
+        if (longitude.compareTo(BigDecimal.valueOf(-180)) < 0
+                || longitude.compareTo(BigDecimal.valueOf(180)) > 0) {
+
+            throw new IllegalArgumentException(
+                    "Longitude deve estar entre -180 e 180."
+            );
+        }
+    }
+
+    // VALIDAR DADOS RETORNADOS PELA BRASIL API - CNPJ
+    private void validarDadosCnpj(
+            BrasilApiCnpjResponse dadosCnpj,
+            String cnpjInformado) {
+
+        if (dadosCnpj == null) {
+            throw new IllegalArgumentException(
+                    "A Brasil API não retornou os dados do CNPJ."
+            );
+        }
+
+        String cnpjRetornado = somenteDigitos(dadosCnpj.cnpj());
+
+        if (!cnpjInformado.equals(cnpjRetornado)) {
+            throw new IllegalArgumentException(
+                    "O CNPJ retornado pela Brasil API não corresponde ao CNPJ informado."
+            );
+        }
+
+        if (dadosCnpj.razaoSocial() == null
+                || dadosCnpj.razaoSocial().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "A Brasil API não retornou a razão social."
+            );
+        }
+
+        if (!"ATIVA".equalsIgnoreCase(
+                normalizar(dadosCnpj.descricaoSituacaoCadastral()))) {
+
+            throw new IllegalArgumentException(
+                    "O CNPJ não está ativo na Receita Federal."
+            );
+        }
+
+        String cep = somenteDigitos(dadosCnpj.cep());
+
+        if (!cep.matches("\\d{8}")) {
+            throw new IllegalArgumentException(
+                    "A Brasil API não retornou um CEP válido para o CNPJ."
+            );
+        }
+    }
+
+    // VALIDAR DADOS RETORNADOS PELA BRASIL API - CEP
+    private void validarDadosCep(
+            BrasilApiCnpjResponse dadosCnpj,
+            BrasilApiCepResponse dadosCep) {
+
+        if (dadosCep == null) {
+            throw new IllegalArgumentException(
+                    "A Brasil API não retornou os dados do CEP."
+            );
+        }
+
+        String cepCnpj = somenteDigitos(dadosCnpj.cep());
+        String cepConsultado = somenteDigitos(dadosCep.cep());
+
+        if (!cepCnpj.equals(cepConsultado)) {
+            throw new IllegalArgumentException(
+                    "O CEP consultado não corresponde ao CEP vinculado ao CNPJ."
+            );
+        }
+
+        if (dadosCep.city() == null || dadosCep.city().isBlank()
+                || dadosCep.uf() == null || dadosCep.uf().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "A Brasil API não retornou cidade e UF para o CEP."
+            );
+        }
+
+        if (dadosCnpj.municipio() != null
+                && !normalizar(dadosCnpj.municipio())
+                .equals(normalizar(dadosCep.city()))) {
+
+            throw new IllegalArgumentException(
+                    "A cidade retornada pelo CEP diverge da cidade do CNPJ."
+            );
+        }
+
+        if (dadosCnpj.uf() != null
+                && !normalizar(dadosCnpj.uf())
+                .equals(normalizar(dadosCep.uf()))) {
+
+            throw new IllegalArgumentException(
+                    "A UF retornada pelo CEP diverge da UF do CNPJ."
             );
         }
     }
@@ -436,11 +583,8 @@ public class EstabelecimentoService {
             );
         }
 
-        // REJEITAR CNPJ COM TODOS OS DÍGITOS IGUAIS
         if (cnpj.chars().distinct().count() == 1) {
-            throw new IllegalArgumentException(
-                    "CNPJ inválido."
-            );
+            throw new IllegalArgumentException("CNPJ inválido.");
         }
 
         int[] pesosPrimeiroDigito = {
@@ -491,51 +635,137 @@ public class EstabelecimentoService {
         return resto < 2 ? 0 : 11 - resto;
     }
 
-    // CONVERTER REQUEST DTO PARA MODEL
+    // CONVERTER REQUEST DTO E BRASIL API PARA MODEL
     private Estabelecimento converterParaModel(
-            EstabelecimentoRequestDTO dto) {
+            EstabelecimentoRequestDTO dto,
+            BrasilApiCnpjResponse dadosCnpj,
+            BrasilApiCepResponse dadosCep) {
 
         return Estabelecimento.builder()
-                .nrCnpj(dto.nrCnpj().trim())
-                .nmRazaoSocial(dto.nmRazaoSocial().trim())
-                .nmFantasia(dto.nmFantasia())
+
+                .nrCnpj(somenteDigitos(dadosCnpj.cnpj()))
+                .nmRazaoSocial(dadosCnpj.razaoSocial().trim())
+                .nmFantasia(
+                        dadosCnpj.nomeFantasia() == null
+                                || dadosCnpj.nomeFantasia().isBlank()
+                                ? null
+                                : dadosCnpj.nomeFantasia().trim()
+                )
+
                 .nmEmpresa(dto.nmEmpresa().trim())
                 .dsEmail(dto.dsEmail().trim().toLowerCase())
                 .nrTelefone(dto.nrTelefone())
-                .dsTipoEstabelecimento(dto.dsTipoEstabelecimento().trim())
-                .nrCep(dto.nrCep())
-                .dsLogradouro(dto.dsLogradouro())
-                .nrEndereco(dto.nrEndereco())
-                .dsComplemento(dto.dsComplemento())
-                .nmBairro(dto.nmBairro())
-                .nmCidade(dto.nmCidade())
-                .sgUf(dto.sgUf())
+                .dsTipoEstabelecimento(
+                        dto.dsTipoEstabelecimento().trim()
+                )
+
+                .nrCep(somenteDigitos(dadosCep.cep()))
+                .dsLogradouro(dadosCnpj.logradouro())
+                .nrEndereco(dadosCnpj.numero())
+                .dsComplemento(dadosCnpj.complemento())
+                .nmBairro(dadosCnpj.bairro())
+                .nmCidade(dadosCep.city())
+                .sgUf(dadosCep.uf())
+
                 .nrLatitude(dto.nrLatitude())
                 .nrLongitude(dto.nrLongitude())
+
+                .stEstabelecimento("ATIVO")
+                .flAcolhimentoAtivo("N")
+
                 .build();
     }
 
-    // CONVERTER UPDATE DTO PARA MODEL
+    // CONVERTER UPDATE DTO E BRASIL API PARA MODEL
     private Estabelecimento converterParaModel(
-            EstabelecimentoUpdateDTO dto) {
+            EstabelecimentoUpdateDTO dto,
+            Estabelecimento existente,
+            BrasilApiCnpjResponse dadosCnpj,
+            BrasilApiCepResponse dadosCep) {
 
         return Estabelecimento.builder()
-                .nmRazaoSocial(dto.nmRazaoSocial().trim())
-                .nmFantasia(dto.nmFantasia())
+
+                .cdEstabelecimento(existente.getCdEstabelecimento())
+
+                // DADOS OFICIAIS: FONTE BRASIL API
+                .nrCnpj(existente.getNrCnpj())
+                .nmRazaoSocial(dadosCnpj.razaoSocial().trim())
+                .nmFantasia(
+                        dadosCnpj.nomeFantasia() == null
+                                || dadosCnpj.nomeFantasia().isBlank()
+                                ? null
+                                : dadosCnpj.nomeFantasia().trim()
+                )
+
+                // DADOS OPERACIONAIS EDITÁVEIS
                 .nmEmpresa(dto.nmEmpresa().trim())
                 .dsEmail(dto.dsEmail().trim().toLowerCase())
                 .nrTelefone(dto.nrTelefone())
-                .dsTipoEstabelecimento(dto.dsTipoEstabelecimento().trim())
-                .nrCep(dto.nrCep())
-                .dsLogradouro(dto.dsLogradouro())
-                .nrEndereco(dto.nrEndereco())
-                .dsComplemento(dto.dsComplemento())
-                .nmBairro(dto.nmBairro())
-                .nmCidade(dto.nmCidade())
-                .sgUf(dto.sgUf())
-                .nrLatitude(dto.nrLatitude())
-                .nrLongitude(dto.nrLongitude())
+                .dsTipoEstabelecimento(
+                        dto.dsTipoEstabelecimento().trim()
+                )
+
+                // ENDEREÇO OFICIAL: FONTE BRASIL API
+                .nrCep(somenteDigitos(dadosCep.cep()))
+                .dsLogradouro(dadosCnpj.logradouro())
+                .nrEndereco(dadosCnpj.numero())
+                .dsComplemento(dadosCnpj.complemento())
+                .nmBairro(dadosCnpj.bairro())
+                .nmCidade(dadosCep.city())
+                .sgUf(dadosCep.uf())
+
+                // PRESERVAR COORDENADAS QUANDO NÃO FOREM ENVIADAS
+                .nrLatitude(
+                        dto.nrLatitude() != null
+                                ? dto.nrLatitude()
+                                : existente.getNrLatitude()
+                )
+                .nrLongitude(
+                        dto.nrLongitude() != null
+                                ? dto.nrLongitude()
+                                : existente.getNrLongitude()
+                )
+
+                // PRESERVAR CONTROLES OPERACIONAIS
+                .flAcolhimentoAtivo(
+                        existente.getFlAcolhimentoAtivo()
+                )
+                .dtSuspensaoAte(
+                        existente.getDtSuspensaoAte()
+                )
+                .stEstabelecimento(
+                        existente.getStEstabelecimento()
+                )
+                .dtCadastro(
+                        existente.getDtCadastro()
+                )
+
                 .build();
+    }
+
+    // NORMALIZAR TEXTO PARA COMPARAÇÃO
+    private String normalizar(String valor) {
+
+        if (valor == null) {
+            return "";
+        }
+
+        return Normalizer.normalize(
+                        valor.trim(),
+                        Normalizer.Form.NFD
+                )
+                .replaceAll("\\p{M}", "")
+                .toUpperCase();
+    }
+
+    // REMOVER PONTUAÇÃO E CARACTERES NÃO NUMÉRICOS
+    private String somenteDigitos(String valor) {
+
+        if (valor == null) {
+            return "";
+        }
+
+        return valor.replaceAll("\\D", "");
     }
 
     // VALIDAR ID
@@ -547,44 +777,4 @@ public class EstabelecimentoService {
             );
         }
     }
-
-
-    // CONFIGURAR OU REMOVER SUSPENSÃO TEMPORÁRIA
-    public int atualizarSuspensao(
-            Long id,
-            EstabelecimentoSuspensaoDTO dto) {
-
-        validarId(id);
-
-        if (dto == null) {
-            throw new IllegalArgumentException(
-                    "Dados da suspensão não informados."
-            );
-        }
-
-        Estabelecimento estabelecimento =
-                buscarEstabelecimentoExistente(id);
-
-        if (!"ATIVO".equals(estabelecimento.getStEstabelecimento())) {
-            throw new IllegalStateException(
-                    "Estabelecimento não está ativo."
-            );
-        }
-
-        if (dto.dtSuspensaoAte() != null
-                && !dto.dtSuspensaoAte().isAfter(LocalDateTime.now())) {
-
-            throw new IllegalArgumentException(
-                    "A data de suspensão deve estar no futuro."
-            );
-        }
-
-        // DATA FUTURA = SUSPENDER
-        // NULL = REMOVER SUSPENSÃO
-        estabelecimento.setDtSuspensaoAte(dto.dtSuspensaoAte());
-
-        return estabelecimentoDAO.atualizar(estabelecimento);
-    }
-
-
 }
