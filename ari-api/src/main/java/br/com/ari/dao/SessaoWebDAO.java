@@ -32,9 +32,11 @@ public class SessaoWebDAO implements CrudDAO<SessaoWeb, Long> {
     private static SessaoWeb mapearSessao(ResultSet rs)
             throws SQLException {
 
+        Long cdUsuario = rs.getObject("CD_USUARIO", Long.class);
+
         return SessaoWeb.builder()
                 .cdSessaoWeb(rs.getLong("CD_SESSAO_WEB"))
-                .cdUsuario(rs.getLong("CD_USUARIO"))
+                .cdUsuario(cdUsuario)
                 .dsUuid(rs.getString("DS_UUID"))
                 .dtCriacao(timestampParaLocalDateTime(
                         rs.getTimestamp("DT_CRIACAO")))
@@ -94,7 +96,11 @@ public class SessaoWebDAO implements CrudDAO<SessaoWeb, Long> {
                     new String[]{"CD_SESSAO_WEB"}
             );
 
-            ps.setLong(1, sessao.getCdUsuario());
+            if (sessao.getCdUsuario() != null) {
+                ps.setLong(1, sessao.getCdUsuario());
+            } else {
+                ps.setNull(1, java.sql.Types.NUMERIC);
+            }
             ps.setString(2, sessao.getDsUuid());
 
             ps.setTimestamp(

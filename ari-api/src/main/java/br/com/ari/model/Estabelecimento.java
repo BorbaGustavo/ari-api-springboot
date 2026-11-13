@@ -18,6 +18,7 @@ public class Estabelecimento {
     private String nrCnpj;
     private String nmRazaoSocial;
     private String nmFantasia;
+    private String nmEmpresa;
 
     private String dsEmail;
     private String nrTelefone;

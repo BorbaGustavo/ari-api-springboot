@@ -187,6 +187,7 @@ public class EstabelecimentoController {
                 estabelecimento.getNrCnpj(),
                 estabelecimento.getNmRazaoSocial(),
                 estabelecimento.getNmFantasia(),
+                estabelecimento.getNmEmpresa(),
                 estabelecimento.getDsEmail(),
                 estabelecimento.getNrTelefone(),
                 estabelecimento.getDsTipoEstabelecimento(),

@@ -321,6 +321,12 @@ public class EstabelecimentoService {
             );
         }
 
+        if (dto.nmEmpresa() == null || dto.nmEmpresa().isBlank()) {
+            throw new IllegalArgumentException(
+                    "Nome da empresa é obrigatório."
+            );
+        }
+
         if (dto.dsEmail() == null
                 || dto.dsEmail().isBlank()) {
 
@@ -395,6 +401,12 @@ public class EstabelecimentoService {
 
             throw new IllegalArgumentException(
                     "Razão social é obrigatória."
+            );
+        }
+
+        if (dto.nmEmpresa() == null || dto.nmEmpresa().isBlank()) {
+            throw new IllegalArgumentException(
+                    "Nome da empresa é obrigatório."
             );
         }
 
@@ -487,6 +499,7 @@ public class EstabelecimentoService {
                 .nrCnpj(dto.nrCnpj().trim())
                 .nmRazaoSocial(dto.nmRazaoSocial().trim())
                 .nmFantasia(dto.nmFantasia())
+                .nmEmpresa(dto.nmEmpresa().trim())
                 .dsEmail(dto.dsEmail().trim().toLowerCase())
                 .nrTelefone(dto.nrTelefone())
                 .dsTipoEstabelecimento(dto.dsTipoEstabelecimento().trim())
@@ -509,6 +522,7 @@ public class EstabelecimentoService {
         return Estabelecimento.builder()
                 .nmRazaoSocial(dto.nmRazaoSocial().trim())
                 .nmFantasia(dto.nmFantasia())
+                .nmEmpresa(dto.nmEmpresa().trim())
                 .dsEmail(dto.dsEmail().trim().toLowerCase())
                 .nrTelefone(dto.nrTelefone())
                 .dsTipoEstabelecimento(dto.dsTipoEstabelecimento().trim())

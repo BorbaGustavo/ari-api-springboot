@@ -11,6 +11,7 @@ public record CondicaoApoioResponseDTO(
 
         Long cdCondicaoApoio,
         Long cdEstabelecimento,
+        String tpCategoria,
         String nmCondicao,
         String dsCondicao,
         String flAtivo,

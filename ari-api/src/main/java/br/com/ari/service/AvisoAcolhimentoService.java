@@ -490,6 +490,7 @@ public class AvisoAcolhimentoService {
         return new AvisoAcolhimentoResponseDTO(
                 aviso.getCdAviso(),
                 aviso.getCdUsuario(),
+                aviso.getCdSessaoWeb(),
                 aviso.getCdEstabelecimento(),
                 aviso.getCdFuncionario(),
                 aviso.getDtAviso(),

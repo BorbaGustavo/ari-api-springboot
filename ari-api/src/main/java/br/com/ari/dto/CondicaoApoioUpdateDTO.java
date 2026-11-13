@@ -6,11 +6,19 @@
 package br.com.ari.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Dados editáveis de uma condição de apoio.", example = "{\"nmCondicao\":\"Atendimento em Libras\",\"dsCondicao\":\"Atendimento com intérprete de Libras.\"}")
 public record CondicaoApoioUpdateDTO(
+
+        @NotBlank(message = "Categoria da condição é obrigatória.")
+        @Pattern(
+                regexp = "CONDICAO|APOIO_ADICIONAL",
+                message = "Categoria deve ser CONDICAO ou APOIO_ADICIONAL."
+        )
+        String tpCategoria,
 
         @NotBlank(message = "Nome da condição é obrigatório.")
         @Size(max = 100, message = "O nome deve ter no máximo 100 caracteres.")

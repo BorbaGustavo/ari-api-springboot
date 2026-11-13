@@ -7,6 +7,7 @@ public record AvisoAcolhimentoResponseDTO(
 
         Long cdAviso,
         Long cdUsuario,
+        Long cdSessaoWeb,
         Long cdEstabelecimento,
         Long cdFuncionario,
 

@@ -11,6 +11,7 @@ public record EstabelecimentoResponseDTO(
         String nrCnpj,
         String nmRazaoSocial,
         String nmFantasia,
+        String nmEmpresa,
 
         String dsEmail,
         String nrTelefone,

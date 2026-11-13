@@ -53,6 +53,7 @@ public class CondicaoApoioService {
         // CONVERTER DTO PARA MODEL
         CondicaoApoio condicao = CondicaoApoio.builder()
                 .cdEstabelecimento(admin.getCdEstabelecimento())
+                .tpCategoria(dto.tpCategoria())
                 .nmCondicao(nome)
                 .dsCondicao(normalizarDescricao(dto.dsCondicao()))
                 .flAtivo("S")
@@ -178,6 +179,7 @@ public class CondicaoApoioService {
         CondicaoApoio condicao = CondicaoApoio.builder()
                 .cdCondicaoApoio(cdCondicaoApoio)
                 .cdEstabelecimento(admin.getCdEstabelecimento())
+                .tpCategoria(dto.tpCategoria())
                 .nmCondicao(nome)
                 .dsCondicao(normalizarDescricao(dto.dsCondicao()))
                 .flAtivo(existente.getFlAtivo())
@@ -379,6 +381,8 @@ public class CondicaoApoioService {
             );
         }
 
+        validarCategoria(dto.tpCategoria());
+
         if (dto.nmCondicao().trim().length() > 100) {
             throw new IllegalArgumentException(
                     "Nome da condição deve ter no máximo 100 caracteres."
@@ -405,6 +409,8 @@ public class CondicaoApoioService {
                     "Nome da condição é obrigatório."
             );
         }
+
+        validarCategoria(dto.tpCategoria());
 
         if (dto.nmCondicao().trim().length() > 100) {
             throw new IllegalArgumentException(
@@ -435,6 +441,15 @@ public class CondicaoApoioService {
         return descricao.trim();
     }
 
+    private void validarCategoria(String categoria) {
+        if (!"CONDICAO".equals(categoria)
+                && !"APOIO_ADICIONAL".equals(categoria)) {
+            throw new IllegalArgumentException(
+                    "Categoria deve ser CONDICAO ou APOIO_ADICIONAL."
+            );
+        }
+    }
+
     // CONVERTER MODEL PARA RESPONSE DTO
     private CondicaoApoioResponseDTO converterParaResponse(
             CondicaoApoio condicao) {
@@ -442,6 +457,7 @@ public class CondicaoApoioService {
         return new CondicaoApoioResponseDTO(
                 condicao.getCdCondicaoApoio(),
                 condicao.getCdEstabelecimento(),
+                condicao.getTpCategoria(),
                 condicao.getNmCondicao(),
                 condicao.getDsCondicao(),
                 condicao.getFlAtivo(),

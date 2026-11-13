@@ -21,6 +21,7 @@ public class CondicaoApoio {
 
     private Long cdEstabelecimento;
 
+    private String tpCategoria;
     private String nmCondicao;
 
     private String dsCondicao;

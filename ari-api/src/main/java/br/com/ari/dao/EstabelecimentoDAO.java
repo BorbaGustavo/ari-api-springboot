@@ -32,6 +32,7 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
                     .nrCnpj(rs.getString("NR_CNPJ"))
                     .nmRazaoSocial(rs.getString("NM_RAZAO_SOCIAL"))
                     .nmFantasia(rs.getString("NM_FANTASIA"))
+                    .nmEmpresa(rs.getString("NM_EMPRESA"))
 
                     .dsEmail(rs.getString("DS_EMAIL"))
                     .nrTelefone(rs.getString("NR_TELEFONE"))
@@ -96,6 +97,7 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
             NR_CNPJ,
             NM_RAZAO_SOCIAL,
             NM_FANTASIA,
+            NM_EMPRESA,
             DS_EMAIL,
             NR_TELEFONE,
             DS_TIPO_ESTABELECIMENTO,
@@ -123,6 +125,7 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
                     NR_CNPJ,
                     NM_RAZAO_SOCIAL,
                     NM_FANTASIA,
+                    NM_EMPRESA,
                     DS_EMAIL,
                     NR_TELEFONE,
                     DS_TIPO_ESTABELECIMENTO,
@@ -135,7 +138,7 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
                     SG_UF,
                     NR_LATITUDE,
                     NR_LONGITUDE
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         return jdbcTemplate.update(
@@ -143,6 +146,7 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
                 estabelecimento.getNrCnpj(),
                 estabelecimento.getNmRazaoSocial(),
                 estabelecimento.getNmFantasia(),
+                estabelecimento.getNmEmpresa(),
                 estabelecimento.getDsEmail(),
                 estabelecimento.getNrTelefone(),
                 estabelecimento.getDsTipoEstabelecimento(),
@@ -208,6 +212,7 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
                 SET
                     NM_RAZAO_SOCIAL = ?,
                     NM_FANTASIA = ?,
+                    NM_EMPRESA = ?,
                     DS_EMAIL = ?,
                     NR_TELEFONE = ?,
                     DS_TIPO_ESTABELECIMENTO = ?,
@@ -230,6 +235,7 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
                 sql,
                 estabelecimento.getNmRazaoSocial(),
                 estabelecimento.getNmFantasia(),
+                estabelecimento.getNmEmpresa(),
                 estabelecimento.getDsEmail(),
                 estabelecimento.getNrTelefone(),
                 estabelecimento.getDsTipoEstabelecimento(),

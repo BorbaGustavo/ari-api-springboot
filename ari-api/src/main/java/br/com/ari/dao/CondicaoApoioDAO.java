@@ -44,6 +44,7 @@ public class CondicaoApoioDAO
         return CondicaoApoio.builder()
                 .cdCondicaoApoio(rs.getLong("CD_CONDICAO_APOIO"))
                 .cdEstabelecimento(rs.getLong("CD_ESTABELECIMENTO"))
+                .tpCategoria(rs.getString("TP_CATEGORIA"))
                 .nmCondicao(rs.getString("NM_CONDICAO"))
                 .dsCondicao(rs.getString("DS_CONDICAO"))
                 .flAtivo(rs.getString("FL_ATIVO"))
@@ -59,6 +60,7 @@ public class CondicaoApoioDAO
     private static final String COLUNAS = """
             CD_CONDICAO_APOIO,
             CD_ESTABELECIMENTO,
+            TP_CATEGORIA,
             NM_CONDICAO,
             DS_CONDICAO,
             FL_ATIVO,
@@ -72,9 +74,10 @@ public class CondicaoApoioDAO
         String sql = """
                 INSERT INTO T_ARI_CONDICAO_APOIO (
                     CD_ESTABELECIMENTO,
+                    TP_CATEGORIA,
                     NM_CONDICAO,
                     DS_CONDICAO
-                ) VALUES (?, ?, ?)
+                ) VALUES (?, ?, ?, ?)
                 """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -93,13 +96,18 @@ public class CondicaoApoioDAO
 
             ps.setString(
                     2,
+                    condicao.getTpCategoria()
+            );
+
+            ps.setString(
+                    3,
                     condicao.getNmCondicao()
             );
 
             if (condicao.getDsCondicao() != null) {
-                ps.setString(3, condicao.getDsCondicao());
+                ps.setString(4, condicao.getDsCondicao());
             } else {
-                ps.setNull(3, Types.VARCHAR);
+                ps.setNull(4, Types.VARCHAR);
             }
 
             return ps;
@@ -180,6 +188,7 @@ public class CondicaoApoioDAO
         String sql = """
                 UPDATE T_ARI_CONDICAO_APOIO
                 SET
+                    TP_CATEGORIA = ?,
                     NM_CONDICAO = ?,
                     DS_CONDICAO = ?
                 WHERE CD_CONDICAO_APOIO = ?
@@ -188,6 +197,7 @@ public class CondicaoApoioDAO
 
         return jdbcTemplate.update(
                 sql,
+                condicao.getTpCategoria(),
                 condicao.getNmCondicao(),
                 condicao.getDsCondicao(),
                 condicao.getCdCondicaoApoio(),

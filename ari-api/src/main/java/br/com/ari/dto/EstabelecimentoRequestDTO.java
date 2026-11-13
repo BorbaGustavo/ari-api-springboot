@@ -34,6 +34,11 @@ public record EstabelecimentoRequestDTO(
         @Schema(description = "Nome fantasia.", example = "ARI")
         String nmFantasia,
 
+        @NotBlank(message = "Nome da empresa é obrigatório.")
+        @Size(max = 120, message = "Nome da empresa deve ter no máximo 120 caracteres.")
+        @Schema(description = "Nome usado para identificação da empresa.", example = "Instituição ARI", requiredMode = Schema.RequiredMode.REQUIRED)
+        String nmEmpresa,
+
         @NotBlank(message = "E-mail é obrigatório.")
         @Email(message = "E-mail inválido.")
         @Size(max = 150, message = "E-mail deve ter no máximo 150 caracteres.")

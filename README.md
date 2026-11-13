@@ -330,6 +330,7 @@ longitude entre `-180` e `180`.
   "nrCnpj": "12345678000195",
   "nmRazaoSocial": "Instituição ARI",
   "nmFantasia": "ARI",
+  "nmEmpresa": "Instituição ARI",
   "dsEmail": "contato@ari.example",
   "nrTelefone": "1133334444",
   "dsTipoEstabelecimento": "Centro de acolhimento",
@@ -360,11 +361,13 @@ na mesma transação.
 
 ```json
 {
+  "tpCategoria": "CONDICAO",
   "nmCondicao": "Atendimento em Libras",
   "dsCondicao": "Atendimento com intérprete de Libras."
 }
 ```
 
+`tpCategoria` é obrigatório e aceita `CONDICAO` ou `APOIO_ADICIONAL`.
 `nmCondicao` é obrigatório e aceita até 100 caracteres. A descrição aceita até
 255 caracteres. Para alterar o status, envie `{ "flAtivo": "S" }` ou
 `{ "flAtivo": "N" }`.
