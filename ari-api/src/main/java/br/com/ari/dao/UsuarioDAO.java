@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -21,17 +20,24 @@ public class UsuarioDAO implements CrudDAO<Usuario, Long> {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    // ==========================================
     // MAPEAMENTO DO RESULTADO DO BANCO PARA MODEL
-    // A senha só é recuperada quando necessária para autenticação.
-    private final RowMapper<Usuario> mapperComSenha =
-            (rs, rowNum) -> mapearUsuario(rs, true);
+    // ==========================================
 
+    // Recupera os dados do usuário sem o hash da senha.
     private final RowMapper<Usuario> mapperSemSenha =
             (rs, rowNum) -> mapearUsuario(rs, false);
 
-    // MAPEAMENTO DOS ATRIBUTOS DO USUÁRIO
+    // Recupera os dados do usuário incluindo o hash.
+    // Utilizado exclusivamente na autenticação.
+    private final RowMapper<Usuario> mapperComSenha =
+            (rs, rowNum) -> mapearUsuario(rs, true);
+
+    // Converte os atributos retornados pelo banco para o Model.
     private static Usuario mapearUsuario(
-            ResultSet rs, boolean incluirSenha) throws SQLException {
+            ResultSet rs,
+            boolean incluirSenha
+    ) throws SQLException {
 
         Timestamp dtCadastro = rs.getTimestamp("DT_CADASTRO");
 
@@ -54,7 +60,10 @@ public class UsuarioDAO implements CrudDAO<Usuario, Long> {
         return builder.build();
     }
 
+    // ==========================================
     // CADASTRAR USUÁRIO
+    // ==========================================
+
     @Override
     public int criar(Usuario usuario) {
 
@@ -76,7 +85,10 @@ public class UsuarioDAO implements CrudDAO<Usuario, Long> {
         );
     }
 
+    // ==========================================
     // BUSCAR USUÁRIO POR ID
+    // ==========================================
+
     @Override
     public Optional<Usuario> buscarPorId(Long cdUsuario) {
 
@@ -97,27 +109,11 @@ public class UsuarioDAO implements CrudDAO<Usuario, Long> {
                 .findFirst();
     }
 
-    // LISTAR TODOS OS USUÁRIOS
-    public List<Usuario> buscarTodos() {
-
-        String sql = """
-                SELECT
-                    CD_USUARIO,
-                    NM_USUARIO,
-                    NR_TELEFONE,
-                    DS_EMAIL,
-                    ST_USUARIO,
-                    DT_CADASTRO
-                FROM T_ARI_USUARIO
-                ORDER BY CD_USUARIO
-                """;
-
-        return jdbcTemplate.query(sql, mapperSemSenha);
-    }
-
+    // ==========================================
     // BUSCAR USUÁRIO POR E-MAIL
-    // Necessário para autenticação.
-    // Recupera o hash da senha para conferência no Service.
+    // ==========================================
+
+    // Recupera o hash para validação da senha no Service.
     public Optional<Usuario> buscarPorEmail(String email) {
 
         String sql = """
@@ -138,7 +134,10 @@ public class UsuarioDAO implements CrudDAO<Usuario, Long> {
                 .findFirst();
     }
 
+    // ==========================================
     // ATUALIZAR DADOS CADASTRAIS
+    // ==========================================
+
     @Override
     public int atualizar(Usuario usuario) {
 
@@ -160,8 +159,11 @@ public class UsuarioDAO implements CrudDAO<Usuario, Long> {
         );
     }
 
+    // ==========================================
     // ATUALIZAR SENHA
-    // Recebe somente a senha já protegida com BCrypt.
+    // ==========================================
+
+    // Recebe somente o hash gerado pelo BCrypt no Service.
     public int atualizarSenha(Long cdUsuario, String dsSenhaHash) {
 
         String sql = """
@@ -177,10 +179,13 @@ public class UsuarioDAO implements CrudDAO<Usuario, Long> {
         );
     }
 
+    // ==========================================
     // BLOQUEAR USUÁRIO
-    // Preserva o cadastro, as sessões e o histórico de avisos.
+    // ==========================================
+
+    // Realiza exclusão lógica, preservando o histórico.
     @Override
-    public int excluir(Long id) {
+    public int excluir(Long cdUsuario) {
 
         String sql = """
                 UPDATE T_ARI_USUARIO
@@ -188,14 +193,6 @@ public class UsuarioDAO implements CrudDAO<Usuario, Long> {
                 WHERE CD_USUARIO = ?
                 """;
 
-        return jdbcTemplate.update(sql, id);
+        return jdbcTemplate.update(sql, cdUsuario);
     }
-
-    public int excluirFisico(Long id) {
-        return jdbcTemplate.update(
-                "DELETE FROM T_ARI_USUARIO WHERE CD_USUARIO = ?",
-                id
-        );
-    }
-
 }

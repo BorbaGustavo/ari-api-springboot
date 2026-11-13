@@ -187,8 +187,21 @@ public class SessaoWebDAO implements CrudDAO<SessaoWeb, Long> {
         return jdbcTemplate.update(sql, status, id);
     }
 
-    // REVOGAR SESSÃO
-    // Preserva o registro no banco.
+    // REVOGAR TODAS AS SESSÕES ATIVAS DE UM USUÁRIO
+    // Preserva os registros no banco.
+    public int revogarSessoesAtivasUsuario(Long cdUsuario) {
+
+        String sql = """
+            UPDATE T_ARI_SESSAO_WEB
+            SET ST_SESSAO = 'REVOGADA'
+            WHERE CD_USUARIO = ?
+              AND ST_SESSAO = 'ATIVA'
+            """;
+
+        return jdbcTemplate.update(sql, cdUsuario);
+    }
+
+
     @Override
     public int excluir(Long id) {
 
