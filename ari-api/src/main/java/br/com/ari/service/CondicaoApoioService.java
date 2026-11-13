@@ -11,10 +11,13 @@ import br.com.ari.dto.CondicaoApoioResponseDTO;
 import br.com.ari.model.CondicaoApoio;
 import br.com.ari.model.Funcionario;
 
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class CondicaoApoioService {
@@ -33,6 +36,7 @@ public class CondicaoApoioService {
 
     // CADASTRAR CONDIÇÃO DE APOIO
     // Somente ADMIN pode cadastrar condições da própria empresa.
+    @Transactional
     public CondicaoApoioResponseDTO criar(
             Long cdFuncionarioAdmin,
             CondicaoApoioRequestDTO dto) {
@@ -71,11 +75,10 @@ public class CondicaoApoioService {
                 );
             }
 
-        } catch (DataIntegrityViolationException e) {
+        } catch (DuplicateKeyException e) {
 
             throw new IllegalArgumentException(
-                    "Não foi possível cadastrar. "
-                            + "Verifique se essa condição já existe na empresa."
+                    "Esta condição já está cadastrada na empresa."
             );
         }
 
@@ -149,6 +152,7 @@ public class CondicaoApoioService {
     }
 
     // ATUALIZAR CONDIÇÃO DE APOIO
+    @Transactional
     public CondicaoApoioResponseDTO atualizar(
             Long cdFuncionarioAdmin,
             Long cdCondicaoApoio,
@@ -196,18 +200,25 @@ public class CondicaoApoioService {
                 );
             }
 
-        } catch (DataIntegrityViolationException e) {
+        } catch (DuplicateKeyException e) {
 
             throw new IllegalArgumentException(
                     "Já existe uma condição com esse nome na empresa."
             );
         }
 
-        return converterParaResponse(condicao);
+        // RECUPERAR DADOS ATUALIZADOS
+        CondicaoApoio atualizada = buscarCondicaoDaEmpresa(
+                cdCondicaoApoio,
+                admin.getCdEstabelecimento()
+        );
+
+        return converterParaResponse(atualizada);
     }
 
     // DESATIVAR CONDIÇÃO DE APOIO
     // Preserva o registro e altera FL_ATIVO para N.
+    @Transactional
     public int desativar(
             Long cdFuncionarioAdmin,
             Long cdCondicaoApoio) {
@@ -225,14 +236,23 @@ public class CondicaoApoioService {
             );
         }
 
-        return condicaoApoioDAO.atualizarStatus(
+        int linhasAfetadas = condicaoApoioDAO.atualizarStatus(
                 cdCondicaoApoio,
                 admin.getCdEstabelecimento(),
                 "N"
         );
+
+        if (linhasAfetadas == 0) {
+            throw new IllegalStateException(
+                    "Não foi possível desativar a condição de apoio."
+            );
+        }
+
+        return linhasAfetadas;
     }
 
     // REATIVAR CONDIÇÃO DE APOIO
+    @Transactional
     public int ativar(
             Long cdFuncionarioAdmin,
             Long cdCondicaoApoio) {
@@ -257,23 +277,93 @@ public class CondicaoApoioService {
                 cdCondicaoApoio
         );
 
-        try {
+        int linhasAfetadas = condicaoApoioDAO.atualizarStatus(
+                cdCondicaoApoio,
+                admin.getCdEstabelecimento(),
+                "S"
+        );
 
-            return condicaoApoioDAO.atualizarStatus(
-                    cdCondicaoApoio,
-                    admin.getCdEstabelecimento(),
-                    "S"
-            );
-
-        } catch (DataIntegrityViolationException e) {
-
-            throw new IllegalArgumentException(
+        if (linhasAfetadas == 0) {
+            throw new IllegalStateException(
                     "Não foi possível reativar a condição de apoio."
             );
         }
+
+        return linhasAfetadas;
     }
 
-    // BUSCAR ADMIN AUTENTICADO
+    // ATUALIZAR SELEÇÕES DOS CHECKBOXES
+    // IDs selecionados recebem S; os demais recebem N.
+    @Transactional
+    public List<CondicaoApoioResponseDTO> atualizarSelecoes(
+            Long cdFuncionarioAdmin,
+            List<Long> idsSelecionados) {
+
+        Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
+
+        if (idsSelecionados == null) {
+            throw new IllegalArgumentException(
+                    "A lista de condições selecionadas não foi informada."
+            );
+        }
+
+        // VALIDAR IDs E IMPEDIR REPETIÇÕES
+        Set<Long> idsUnicos = new HashSet<>();
+
+        for (Long id : idsSelecionados) {
+
+            validarId(id);
+
+            if (!idsUnicos.add(id)) {
+                throw new IllegalArgumentException(
+                        "A lista contém condições repetidas."
+                );
+            }
+        }
+
+        // BUSCAR TODAS AS CONDIÇÕES DA EMPRESA
+        List<CondicaoApoio> condicoes =
+                condicaoApoioDAO.buscarPorEstabelecimento(
+                        admin.getCdEstabelecimento()
+                );
+
+        // IDENTIFICAR OS IDs PERTENCENTES AO ESTABELECIMENTO
+        Set<Long> idsExistentes = new HashSet<>();
+
+        for (CondicaoApoio condicao : condicoes) {
+            idsExistentes.add(condicao.getCdCondicaoApoio());
+        }
+
+        // IMPEDIR SELEÇÃO DE CONDIÇÕES DE OUTRA EMPRESA
+        if (!idsExistentes.containsAll(idsUnicos)) {
+            throw new IllegalArgumentException(
+                    "A seleção contém condições inexistentes "
+                            + "ou pertencentes a outro estabelecimento."
+            );
+        }
+
+        // ATUALIZAR TODAS AS SELEÇÕES NO BANCO
+        int linhasAfetadas = condicaoApoioDAO.atualizarSelecoes(
+                admin.getCdEstabelecimento(),
+                idsSelecionados
+        );
+
+        // VERIFICAR SE A ATUALIZAÇÃO FOI EXECUTADA
+        if (!idsSelecionados.isEmpty() && linhasAfetadas == 0) {
+            throw new IllegalStateException(
+                    "Não foi possível atualizar as condições de apoio."
+            );
+        }
+
+        // RETORNAR TODAS AS CONDIÇÕES COM OS STATUS ATUALIZADOS
+        return condicaoApoioDAO.buscarPorEstabelecimento(
+                        admin.getCdEstabelecimento()
+                ).stream()
+                .map(this::converterParaResponse)
+                .toList();
+    }
+
+    // BUSCAR ADMIN AUTORIZADO
     private Funcionario buscarAdmin(Long id) {
 
         validarId(id);
@@ -297,6 +387,9 @@ public class CondicaoApoioService {
             );
         }
 
+        // VALIDAR ESTABELECIMENTO VINCULADO AO ADMIN
+        validarId(admin.getCdEstabelecimento());
+
         return admin;
     }
 
@@ -315,8 +408,8 @@ public class CondicaoApoioService {
                                 )
                         );
 
-        if (!condicao.getCdEstabelecimento()
-                .equals(cdEstabelecimento)) {
+        if (!cdEstabelecimento.equals(
+                condicao.getCdEstabelecimento())) {
 
             throw new IllegalArgumentException(
                     "Esta condição não pertence ao seu estabelecimento."
@@ -338,6 +431,7 @@ public class CondicaoApoioService {
 
     // VERIFICAR SE O NOME JÁ EXISTE NA EMPRESA
     // A comparação ignora diferenças entre letras maiúsculas e minúsculas.
+    // Considera também registros inativos.
     private void validarNomeDuplicado(
             Long cdEstabelecimento,
             String nome,
@@ -389,7 +483,7 @@ public class CondicaoApoioService {
             );
         }
 
-        validarDescricao(dto.dsCondicao());
+        validarDescricao(normalizarDescricao(dto.dsCondicao()));
     }
 
     // VALIDAR DADOS DA ATUALIZAÇÃO
@@ -418,7 +512,7 @@ public class CondicaoApoioService {
             );
         }
 
-        validarDescricao(dto.dsCondicao());
+        validarDescricao(normalizarDescricao(dto.dsCondicao()));
     }
 
     // VALIDAR DESCRIÇÃO
@@ -441,9 +535,12 @@ public class CondicaoApoioService {
         return descricao.trim();
     }
 
+    // VALIDAR CATEGORIA
     private void validarCategoria(String categoria) {
+
         if (!"CONDICAO".equals(categoria)
                 && !"APOIO_ADICIONAL".equals(categoria)) {
+
             throw new IllegalArgumentException(
                     "Categoria deve ser CONDICAO ou APOIO_ADICIONAL."
             );
@@ -474,5 +571,4 @@ public class CondicaoApoioService {
             );
         }
     }
-
 }

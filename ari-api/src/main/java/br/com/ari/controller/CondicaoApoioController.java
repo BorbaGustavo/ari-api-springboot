@@ -4,7 +4,7 @@ package br.com.ari.controller;
 import br.com.ari.dto.CondicaoApoioRequestDTO;
 import br.com.ari.dto.CondicaoApoioUpdateDTO;
 import br.com.ari.dto.CondicaoApoioResponseDTO;
-import br.com.ari.dto.CondicaoApoioStatusDTO;
+import br.com.ari.dto.CondicaoApoioSelecaoDTO;
 
 import br.com.ari.exception.NaoAutenticadoException;
 import br.com.ari.service.CondicaoApoioService;
@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -45,7 +46,10 @@ public class CondicaoApoioController {
 
     // Utilizado pelo Front-end para apresentar os apoios oferecidos.
     @GetMapping("/estabelecimento/{id}/publicas")
-    @Operation(summary = "Listar condições públicas", description = "Retorna somente as condições ativas de um estabelecimento.")
+    @Operation(
+            summary = "Listar condições públicas",
+            description = "Retorna somente as condições ativas de um estabelecimento."
+    )
     public ResponseEntity<List<CondicaoApoioResponseDTO>>
     buscarAtivasPublicas(@PathVariable Long id) {
 
@@ -61,7 +65,10 @@ public class CondicaoApoioController {
 
     // Somente ADMIN. Inclui condições ativas e inativas.
     @GetMapping
-    @Operation(summary = "Listar condições do estabelecimento", description = "Lista condições ativas e inativas do estabelecimento do administrador.")
+    @Operation(
+            summary = "Listar condições do estabelecimento",
+            description = "Lista condições ativas e inativas do estabelecimento do administrador."
+    )
     public ResponseEntity<List<CondicaoApoioResponseDTO>>
     buscarPorEstabelecimento(Principal principal) {
 
@@ -80,7 +87,10 @@ public class CondicaoApoioController {
     // =====================================================
 
     @PostMapping
-    @Operation(summary = "Cadastrar condição de apoio", description = "Cadastra uma condição de apoio para o estabelecimento.")
+    @Operation(
+            summary = "Cadastrar condição de apoio",
+            description = "Cadastra uma condição de apoio para o estabelecimento."
+    )
     public ResponseEntity<CondicaoApoioResponseDTO> criar(
             Principal principal,
             @Valid @RequestBody CondicaoApoioRequestDTO dto) {
@@ -103,7 +113,10 @@ public class CondicaoApoioController {
     // =====================================================
 
     @PutMapping("/{id}")
-    @Operation(summary = "Atualizar condição de apoio", description = "Atualiza o nome e a descrição de uma condição.")
+    @Operation(
+            summary = "Atualizar condição de apoio",
+            description = "Atualiza a categoria, o nome e a descrição de uma condição."
+    )
     public ResponseEntity<CondicaoApoioResponseDTO> atualizar(
             Principal principal,
             @PathVariable Long id,
@@ -122,34 +135,29 @@ public class CondicaoApoioController {
     }
 
     // =====================================================
-    // ATIVAR OU DESATIVAR CONDIÇÃO DE APOIO
+    // SALVAR SELEÇÕES DOS CHECKBOXES
     // =====================================================
 
-    @PatchMapping("/{id}/status")
-    @Operation(summary = "Ativar ou desativar condição", description = "Use flAtivo=S para ativar ou flAtivo=N para desativar.")
-    public ResponseEntity<Void> atualizarStatus(
+    // Somente ADMIN. Salva todas as condições selecionadas
+    // e desativa as demais condições do estabelecimento.
+    @PutMapping("/selecoes")
+    @Operation(
+            summary = "Salvar condições selecionadas",
+            description = "Atualiza em conjunto as condições oferecidas pelo estabelecimento."
+    )
+    public ResponseEntity<List<CondicaoApoioResponseDTO>> atualizarSelecoes(
             Principal principal,
-            @PathVariable Long id,
-            @Valid @RequestBody CondicaoApoioStatusDTO dto) {
+            @Valid @RequestBody CondicaoApoioSelecaoDTO dto) {
 
         Long cdFuncionarioAdmin = obterAdminId(principal);
 
-        if ("S".equals(dto.flAtivo())) {
+        List<CondicaoApoioResponseDTO> resposta =
+                condicaoApoioService.atualizarSelecoes(
+                        cdFuncionarioAdmin,
+                        dto.idsSelecionados()
+                );
 
-            condicaoApoioService.ativar(
-                    cdFuncionarioAdmin,
-                    id
-            );
-
-        } else {
-
-            condicaoApoioService.desativar(
-                    cdFuncionarioAdmin,
-                    id
-            );
-        }
-
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(resposta);
     }
 
     // =====================================================

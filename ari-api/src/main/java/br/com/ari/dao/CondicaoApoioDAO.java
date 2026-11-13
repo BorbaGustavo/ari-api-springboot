@@ -19,7 +19,7 @@ import java.util.Optional;
 
 @Repository
 /**
- * DAO de apoio responsável pelo cadastro, consulta, atualização
+ * DAO responsável pelo cadastro, consulta, atualização
  * e desativação das condições de apoio dos estabelecimentos.
  */
 public class CondicaoApoioDAO
@@ -89,20 +89,9 @@ public class CondicaoApoioDAO
                     new String[]{"CD_CONDICAO_APOIO"}
             );
 
-            ps.setLong(
-                    1,
-                    condicao.getCdEstabelecimento()
-            );
-
-            ps.setString(
-                    2,
-                    condicao.getTpCategoria()
-            );
-
-            ps.setString(
-                    3,
-                    condicao.getNmCondicao()
-            );
+            ps.setLong(1, condicao.getCdEstabelecimento());
+            ps.setString(2, condicao.getTpCategoria());
+            ps.setString(3, condicao.getNmCondicao());
 
             if (condicao.getDsCondicao() != null) {
                 ps.setString(4, condicao.getDsCondicao());
@@ -118,9 +107,7 @@ public class CondicaoApoioDAO
         Number chaveGerada = keyHolder.getKey();
 
         if (chaveGerada != null) {
-            condicao.setCdCondicaoApoio(
-                    chaveGerada.longValue()
-            );
+            condicao.setCdCondicaoApoio(chaveGerada.longValue());
         }
 
         return linhasAfetadas;
@@ -227,6 +214,51 @@ public class CondicaoApoioDAO
         );
     }
 
+    // ATUALIZAR TODAS AS SELEÇÕES DO ESTABELECIMENTO
+    // IDs selecionados recebem S; os demais recebem N.
+    public int atualizarSelecoes(
+            Long cdEstabelecimento,
+            List<Long> idsSelecionados) {
+
+        if (idsSelecionados == null || idsSelecionados.isEmpty()) {
+
+            String sql = """
+                    UPDATE T_ARI_CONDICAO_APOIO
+                    SET FL_ATIVO = 'N'
+                    WHERE CD_ESTABELECIMENTO = ?
+                    """;
+
+            return jdbcTemplate.update(sql, cdEstabelecimento);
+        }
+
+        String placeholders = String.join(
+                ",",
+                java.util.Collections.nCopies(
+                        idsSelecionados.size(),
+                        "?"
+                )
+        );
+
+        String sql = """
+                UPDATE T_ARI_CONDICAO_APOIO
+                SET FL_ATIVO = CASE
+                    WHEN CD_CONDICAO_APOIO IN (%s) THEN 'S'
+                    ELSE 'N'
+                END
+                WHERE CD_ESTABELECIMENTO = ?
+                """.formatted(placeholders);
+
+        Object[] parametros = new Object[idsSelecionados.size() + 1];
+
+        for (int i = 0; i < idsSelecionados.size(); i++) {
+            parametros[i] = idsSelecionados.get(i);
+        }
+
+        parametros[idsSelecionados.size()] = cdEstabelecimento;
+
+        return jdbcTemplate.update(sql, parametros);
+    }
+
     // DESATIVAR CONDIÇÃO DE APOIO
     // Preserva o registro no banco.
     @Override
@@ -240,5 +272,4 @@ public class CondicaoApoioDAO
 
         return jdbcTemplate.update(sql, id);
     }
-
 }
