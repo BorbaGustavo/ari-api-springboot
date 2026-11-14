@@ -317,6 +317,50 @@ public class FuncionarioService {
     }
 
     // =====================================================
+    // ATUALIZAR TREINAMENTO DO FUNCIONÁRIO
+    // Somente ADMIN do mesmo estabelecimento.
+    // =====================================================
+
+    @Transactional
+    public int atualizarTreinamento(
+            Long cdFuncionarioAdmin,
+            Long cdFuncionarioAlvo,
+            String flTreinado) {
+
+        Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
+
+        if (!"S".equals(flTreinado) && !"N".equals(flTreinado)) {
+            throw new IllegalArgumentException(
+                    "Informe S para treinado ou N para não treinado."
+            );
+        }
+
+        Funcionario funcionario = buscarFuncionarioDaEmpresa(
+                cdFuncionarioAlvo,
+                admin.getCdEstabelecimento()
+        );
+
+        if (!STATUS_ATIVO.equals(funcionario.getStFuncionario())) {
+            throw new IllegalStateException(
+                    "Não é possível alterar o treinamento de um funcionário inativo."
+            );
+        }
+
+        int linhasAfetadas = funcionarioDAO.atualizarTreinamento(
+                funcionario.getCdFuncionario(),
+                admin.getCdEstabelecimento(),
+                flTreinado
+        );
+
+        validarLinhasAfetadas(
+                linhasAfetadas,
+                "Não foi possível atualizar o treinamento do funcionário."
+        );
+
+        return linhasAfetadas;
+    }
+
+    // =====================================================
     // INATIVAR FUNCIONÁRIO
     // Somente ADMIN do mesmo estabelecimento.
     // Não permite inativar a própria conta.

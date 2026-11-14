@@ -93,6 +93,33 @@ public class AvisoAcolhimentoController {
     }
 
     // =====================================================
+    // CONSULTAR HISTÓRICO DA USUÁRIA
+    // =====================================================
+
+    @GetMapping("/me/historico")
+    @Operation(summary = "Consultar histórico de avisos", description = "Retorna o histórico de avisos da usuária autenticada.")
+    public ResponseEntity<List<AvisoAcolhimentoResponseDTO>> buscarHistoricoUsuario(
+            @RequestHeader("X-Session-UUID") String uuid) {
+
+        return ResponseEntity.ok(avisoAcolhimentoService.buscarPorUsuario(uuid));
+    }
+
+    // =====================================================
+    // CONSULTAR AVISO ESPECÍFICO DA USUÁRIA
+    // =====================================================
+
+    @GetMapping("/me/{id}")
+    @Operation(summary = "Consultar aviso da usuária", description = "Retorna um aviso somente quando ele pertence à usuária autenticada.")
+    public ResponseEntity<AvisoAcolhimentoResponseDTO> buscarPorIdParaUsuario(
+            @RequestHeader("X-Session-UUID") String uuid,
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                avisoAcolhimentoService.buscarPorIdParaUsuario(uuid, id)
+        );
+    }
+
+    // =====================================================
     // CANCELAR AVISO
     // =====================================================
 
@@ -141,6 +168,22 @@ public class AvisoAcolhimentoController {
                 );
 
         return ResponseEntity.ok(avisos);
+    }
+
+    // =====================================================
+    // CONSULTAR HISTÓRICO DO ESTABELECIMENTO
+    // =====================================================
+
+    @GetMapping("/painel/historico")
+    @Operation(summary = "Consultar histórico do estabelecimento", description = "Lista os avisos do estabelecimento do funcionário autenticado.")
+    public ResponseEntity<List<AvisoAcolhimentoResponseDTO>> buscarHistoricoEstabelecimento(
+            Principal principal) {
+
+        return ResponseEntity.ok(
+                avisoAcolhimentoService.buscarPorEstabelecimento(
+                        obterFuncionarioId(principal)
+                )
+        );
     }
 
     // =====================================================

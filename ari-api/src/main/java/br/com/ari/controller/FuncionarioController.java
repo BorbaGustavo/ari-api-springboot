@@ -7,6 +7,7 @@ import br.com.ari.dto.FuncionarioRequestDTO;
 import br.com.ari.dto.FuncionarioResponseDTO;
 import br.com.ari.dto.FuncionarioSenhaUpdateDTO;
 import br.com.ari.dto.FuncionarioUpdateDTO;
+import br.com.ari.dto.FuncionarioTreinamentoDTO;
 
 import br.com.ari.service.FuncionarioService;
 import br.com.ari.service.FuncionarioSessaoService;
@@ -203,6 +204,52 @@ public class FuncionarioController {
         funcionarioService.atualizarSenha(
                 obterFuncionarioId(principal),
                 dto
+        );
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // =====================================================
+    // ATUALIZAR TREINAMENTO DO FUNCIONÁRIO
+    // ADMIN
+    // =====================================================
+
+    @PatchMapping("/{id}/treinamento")
+    @Operation(
+            summary = "Atualizar treinamento do funcionário",
+            description = "Permite ao ADMIN marcar outro funcionário ativo do estabelecimento como treinado (S) ou não treinado (N)."
+    )
+    public ResponseEntity<Void> atualizarTreinamento(
+            Principal principal,
+            @PathVariable Long id,
+            @Valid @RequestBody FuncionarioTreinamentoDTO dto) {
+
+        funcionarioService.atualizarTreinamento(
+                obterAdminId(principal),
+                id,
+                dto.flTreinado()
+        );
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // =====================================================
+    // INATIVAR FUNCIONÁRIO
+    // ADMIN
+    // =====================================================
+
+    @PatchMapping("/{id}/inativar")
+    @Operation(
+            summary = "Inativar funcionário",
+            description = "Inativa outro funcionário do estabelecimento e encerra suas sessões ativas."
+    )
+    public ResponseEntity<Void> inativar(
+            Principal principal,
+            @PathVariable Long id) {
+
+        funcionarioService.inativar(
+                obterAdminId(principal),
+                id
         );
 
         return ResponseEntity.noContent().build();

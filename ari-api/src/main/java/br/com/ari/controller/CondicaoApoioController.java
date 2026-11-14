@@ -83,6 +83,35 @@ public class CondicaoApoioController {
     }
 
     // =====================================================
+    // CONSULTAR CONDIÇÕES ATIVAS DA PRÓPRIA EMPRESA
+    // =====================================================
+
+    @GetMapping("/ativas")
+    @Operation(summary = "Listar condições ativas", description = "Lista somente as condições ativas do estabelecimento do administrador.")
+    public ResponseEntity<List<CondicaoApoioResponseDTO>> buscarAtivas(
+            Principal principal) {
+
+        return ResponseEntity.ok(
+                condicaoApoioService.buscarAtivas(obterAdminId(principal))
+        );
+    }
+
+    // =====================================================
+    // CONSULTAR CONDIÇÃO POR ID
+    // =====================================================
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Buscar condição por ID", description = "Consulta uma condição pertencente ao estabelecimento do administrador.")
+    public ResponseEntity<CondicaoApoioResponseDTO> buscarPorId(
+            Principal principal,
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                condicaoApoioService.buscarPorId(obterAdminId(principal), id)
+        );
+    }
+
+    // =====================================================
     // CADASTRAR CONDIÇÃO DE APOIO
     // =====================================================
 
@@ -132,6 +161,34 @@ public class CondicaoApoioController {
                 );
 
         return ResponseEntity.ok(resposta);
+    }
+
+    // =====================================================
+    // DESATIVAR CONDIÇÃO INDIVIDUAL
+    // =====================================================
+
+    @PatchMapping("/{id}/desativar")
+    @Operation(summary = "Desativar condição", description = "Desativa uma condição sem excluir seu histórico.")
+    public ResponseEntity<Void> desativar(
+            Principal principal,
+            @PathVariable Long id) {
+
+        condicaoApoioService.desativar(obterAdminId(principal), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // =====================================================
+    // REATIVAR CONDIÇÃO INDIVIDUAL
+    // =====================================================
+
+    @PatchMapping("/{id}/ativar")
+    @Operation(summary = "Ativar condição", description = "Reativa uma condição previamente desativada, respeitando a regra de nome único.")
+    public ResponseEntity<Void> ativar(
+            Principal principal,
+            @PathVariable Long id) {
+
+        condicaoApoioService.ativar(obterAdminId(principal), id);
+        return ResponseEntity.noContent().build();
     }
 
     // =====================================================

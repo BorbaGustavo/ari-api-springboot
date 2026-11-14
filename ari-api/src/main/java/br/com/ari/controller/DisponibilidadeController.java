@@ -59,6 +59,52 @@ public class DisponibilidadeController {
     }
 
     // =====================================================
+    // CONSULTAR SOMENTE PERÍODOS ATIVOS
+    // =====================================================
+
+    @GetMapping("/ativas")
+    @Operation(summary = "Listar disponibilidades ativas", description = "Retorna somente os períodos ativos do estabelecimento do administrador.")
+    public ResponseEntity<List<DisponibilidadeResponseDTO>> buscarAtivas(
+            Principal principal) {
+
+        return ResponseEntity.ok(
+                disponibilidadeService.buscarAtivas(obterAdminId(principal))
+        );
+    }
+
+    // =====================================================
+    // CONSULTAR PERÍODOS ATIVOS POR DIA DA SEMANA
+    // =====================================================
+
+    @GetMapping("/dia/{dia}")
+    @Operation(summary = "Listar disponibilidades por dia", description = "Retorna os períodos ativos de um dia da semana (1 a 7).")
+    public ResponseEntity<List<DisponibilidadeResponseDTO>> buscarPorDiaSemana(
+            Principal principal,
+            @PathVariable Integer dia) {
+
+        return ResponseEntity.ok(
+                disponibilidadeService.buscarPorDiaSemana(
+                        obterAdminId(principal), dia
+                )
+        );
+    }
+
+    // =====================================================
+    // CONSULTAR DISPONIBILIDADE POR ID
+    // =====================================================
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Buscar disponibilidade", description = "Consulta um período pertencente ao estabelecimento do administrador.")
+    public ResponseEntity<DisponibilidadeResponseDTO> buscarPorId(
+            Principal principal,
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                disponibilidadeService.buscarPorId(obterAdminId(principal), id)
+        );
+    }
+
+    // =====================================================
     // CADASTRAR PERÍODO DE DISPONIBILIDADE
     // =====================================================
 

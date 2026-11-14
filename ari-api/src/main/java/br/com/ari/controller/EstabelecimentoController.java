@@ -144,6 +144,24 @@ public class EstabelecimentoController {
     }
 
     // =====================================================
+    // BUSCAR ESTABELECIMENTOS POR CEP
+    // PÚBLICO
+    // =====================================================
+
+    @GetMapping("/cep/{cep}")
+    @Operation(summary = "Buscar estabelecimentos por CEP", description = "Retorna estabelecimentos ativos, com acolhimento habilitado e sem suspensão vigente no CEP informado.")
+    public ResponseEntity<List<EstabelecimentoResponseDTO>> buscarPorCep(
+            @PathVariable String cep) {
+
+        List<EstabelecimentoResponseDTO> estabelecimentos =
+                estabelecimentoService.buscarPorCep(cep).stream()
+                        .map(this::converterParaResponse)
+                        .toList();
+
+        return ResponseEntity.ok(estabelecimentos);
+    }
+
+    // =====================================================
     // BUSCAR ESTABELECIMENTO POR ID
     // PÚBLICO
     // =====================================================

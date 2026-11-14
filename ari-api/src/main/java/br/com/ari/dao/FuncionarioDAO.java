@@ -202,6 +202,23 @@ public class FuncionarioDAO implements CrudDAO<Funcionario, Long> {
         );
     }
 
+    // ATUALIZAR SITUAÇÃO DE TREINAMENTO DO FUNCIONÁRIO
+    public int atualizarTreinamento(
+            Long id,
+            Long idEstabelecimento,
+            String flTreinado) {
+
+        String sql = """
+                UPDATE T_ARI_FUNCIONARIO
+                SET FL_TREINADO = ?
+                WHERE CD_FUNCIONARIO = ?
+                  AND CD_ESTABELECIMENTO = ?
+                  AND ST_FUNCIONARIO = 'ATIVO'
+                """;
+
+        return jdbcTemplate.update(sql, flTreinado, id, idEstabelecimento);
+    }
+
     // INATIVAR FUNCIONÁRIO
     // Preserva o histórico dos avisos associados.
     public int inativar(Long id, Long idEstabelecimento) {

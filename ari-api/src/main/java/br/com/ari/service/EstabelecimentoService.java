@@ -15,12 +15,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
 @Service
 public class EstabelecimentoService {
+
+    private static final ZoneId FUSO_HORARIO = ZoneId.of("America/Sao_Paulo");
 
     private static final List<String> STATUS_PERMITIDOS = List.of(
             "PENDENTE",
@@ -252,7 +255,7 @@ public class EstabelecimentoService {
 
             if (estabelecimento.getDtSuspensaoAte() != null
                     && estabelecimento.getDtSuspensaoAte()
-                    .isAfter(LocalDateTime.now())) {
+                    .isAfter(LocalDateTime.now(FUSO_HORARIO))) {
 
                 throw new IllegalStateException(
                         "O estabelecimento possui uma suspensão temporária ativa."
@@ -298,7 +301,7 @@ public class EstabelecimentoService {
         }
 
         if (dto.dtSuspensaoAte() != null
-                && !dto.dtSuspensaoAte().isAfter(LocalDateTime.now())) {
+                && !dto.dtSuspensaoAte().isAfter(LocalDateTime.now(FUSO_HORARIO))) {
 
             throw new IllegalArgumentException(
                     "A data de suspensão deve estar no futuro."

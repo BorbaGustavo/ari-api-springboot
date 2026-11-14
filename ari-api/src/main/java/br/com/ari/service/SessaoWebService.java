@@ -7,6 +7,7 @@ import br.com.ari.model.SessaoWeb;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +17,7 @@ public class SessaoWebService {
     private static final String STATUS_ATIVA = "ATIVA";
     private static final String STATUS_EXPIRADA = "EXPIRADA";
     private static final String STATUS_REVOGADA = "REVOGADA";
+    private static final ZoneId FUSO_HORARIO = ZoneId.of("America/Sao_Paulo");
 
     // PRAZOS DIFERENTES CONFORME O TIPO DE SESSÃO
     private static final long DURACAO_SESSAO_ANONIMA_HORAS = 2;
@@ -40,7 +42,7 @@ public class SessaoWebService {
             validarUsuarioId(cdUsuario);
         }
 
-        LocalDateTime dtCriacao = LocalDateTime.now();
+        LocalDateTime dtCriacao = LocalDateTime.now(FUSO_HORARIO);
 
         // DEFINIR DURAÇÃO CONFORME O TIPO DE SESSÃO
         long duracaoHoras = cdUsuario == null
@@ -113,7 +115,7 @@ public class SessaoWebService {
         }
 
         // VERIFICAR DATA DE EXPIRAÇÃO
-        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime agora = LocalDateTime.now(FUSO_HORARIO);
 
         if (sessao.getDtExpiracao() == null
                 || !sessao.getDtExpiracao().isAfter(agora)) {

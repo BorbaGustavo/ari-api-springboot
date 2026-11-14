@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -342,6 +343,25 @@ public class CondicaoApoioService {
             );
         }
 
+        // A regra de negócio considera nomes equivalentes sem diferenciar
+        // maiúsculas/minúsculas ou espaços nas extremidades. A constraint
+        // do SQL continua sendo respeitada e a regra da aplicação é mais
+        // restritiva para evitar opções duplicadas na interface.
+        Set<String> nomesSelecionados = new HashSet<>();
+        for (CondicaoApoio condicao : condicoes) {
+            if (idsUnicos.contains(condicao.getCdCondicaoApoio())) {
+                String nomeNormalizado = condicao.getNmCondicao()
+                        .trim()
+                        .toLowerCase(Locale.ROOT);
+                if (!nomesSelecionados.add(nomeNormalizado)) {
+                    throw new IllegalArgumentException(
+                            "A seleção contém condições com nomes duplicados "
+                                    + "no mesmo estabelecimento."
+                    );
+                }
+            }
+        }
+
         // ATUALIZAR TODAS AS SELEÇÕES NO BANCO
         int linhasAfetadas = condicaoApoioDAO.atualizarSelecoes(
                 admin.getCdEstabelecimento(),
@@ -442,8 +462,9 @@ public class CondicaoApoioService {
                 .stream()
                 .anyMatch(condicao ->
 
-                        condicao.getNmCondicao()
-                                .equalsIgnoreCase(nome)
+                        condicao.getNmCondicao() != null
+                                && condicao.getNmCondicao().trim()
+                                .equalsIgnoreCase(nome.trim())
 
                                 && (cdCondicaoAtual == null
                                 || !condicao.getCdCondicaoApoio()

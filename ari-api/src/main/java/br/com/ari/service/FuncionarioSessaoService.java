@@ -6,6 +6,7 @@ import br.com.ari.dto.FuncionarioResponseDTO;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,6 +19,7 @@ public class FuncionarioSessaoService {
     private static final String PERFIL_ADMIN = "ADMIN";
     private static final String PERFIL_ATENDENTE = "ATENDENTE";
     private static final String STATUS_ATIVO = "ATIVO";
+    private static final ZoneId FUSO_HORARIO = ZoneId.of("America/Sao_Paulo");
 
     private final ConcurrentHashMap<String, Sessao> sessoes =
             new ConcurrentHashMap<>();
@@ -32,7 +34,7 @@ public class FuncionarioSessaoService {
 
         validarDadosFuncionario(funcionario);
 
-        LocalDateTime expiracao = LocalDateTime.now()
+        LocalDateTime expiracao = LocalDateTime.now(FUSO_HORARIO)
                 .plusHours(DURACAO_SESSAO_HORAS);
 
         String uuid = UUID.randomUUID().toString();
@@ -67,7 +69,7 @@ public class FuncionarioSessaoService {
             return Optional.empty();
         }
 
-        if (!sessao.expiracao().isAfter(LocalDateTime.now())) {
+        if (!sessao.expiracao().isAfter(LocalDateTime.now(FUSO_HORARIO))) {
 
             sessoes.remove(uuid, sessao);
 
