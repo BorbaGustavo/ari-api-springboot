@@ -1,6 +1,7 @@
 
 package br.com.ari.service;
 
+import br.com.ari.exception.SessaoInvalidaException;
 import br.com.ari.dto.FuncionarioResponseDTO;
 
 import org.springframework.stereotype.Service;
@@ -93,7 +94,7 @@ public class FuncionarioSessaoService {
 
         Sessao sessao = buscarAtiva(uuid)
                 .orElseThrow(() ->
-                        new IllegalStateException(
+                        new SessaoInvalidaException(
                                 "Sessão inválida ou expirada."
                         )
                 );

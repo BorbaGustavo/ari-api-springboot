@@ -1,6 +1,9 @@
 
 package br.com.ari.service;
 
+import br.com.ari.exception.CredenciaisInvalidasException;
+import br.com.ari.exception.RecursoNaoEncontradoException;
+import br.com.ari.exception.SessaoInvalidaException;
 import br.com.ari.dao.UsuarioDAO;
 import br.com.ari.dto.LoginRequestDTO;
 import br.com.ari.dto.LoginResponseDTO;
@@ -123,7 +126,7 @@ public class UsuarioService {
         // BUSCAR USUÁRIO PELO E-MAIL
         Usuario usuario = usuarioDAO.buscarPorEmail(email)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new CredenciaisInvalidasException(
                                 "E-mail ou senha inválidos."
                         )
                 );
@@ -138,7 +141,7 @@ public class UsuarioService {
         );
 
         if (!senhaValida) {
-            throw new IllegalArgumentException(
+            throw new CredenciaisInvalidasException(
                     "E-mail ou senha inválidos."
             );
         }
@@ -350,7 +353,7 @@ public class UsuarioService {
         Usuario usuario = usuarioDAO.buscarPorId(
                 sessao.getCdUsuario()
         ).orElseThrow(() ->
-                new IllegalStateException(
+                new RecursoNaoEncontradoException(
                         "Usuário associado à sessão não encontrado."
                 )
         );
@@ -375,7 +378,7 @@ public class UsuarioService {
 
         return sessaoWebService.buscarSessaoAtiva(uuid)
                 .orElseThrow(() ->
-                        new IllegalStateException(
+                        new SessaoInvalidaException(
                                 "Sessão inválida ou expirada."
                         )
                 );

@@ -8,6 +8,9 @@ import br.com.ari.dto.FuncionarioResponseDTO;
 import br.com.ari.dto.FuncionarioSenhaUpdateDTO;
 import br.com.ari.dto.FuncionarioUpdateDTO;
 import br.com.ari.dto.FuncionarioTreinamentoDTO;
+import br.com.ari.exception.AcessoNegadoException;
+import br.com.ari.exception.ConflitoException;
+import br.com.ari.exception.NaoAutenticadoException;
 
 import br.com.ari.service.FuncionarioService;
 import br.com.ari.service.FuncionarioSessaoService;
@@ -17,7 +20,6 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -338,7 +340,7 @@ public class FuncionarioController {
 
         // Impede encerrar a sessão de outro funcionário.
         if (!sessao.cdFuncionario().equals(cdFuncionario)) {
-            throw new AccessDeniedException(
+            throw new AcessoNegadoException(
                     "A sessão informada não pertence ao funcionário autenticado."
             );
         }
@@ -355,7 +357,7 @@ public class FuncionarioController {
     private Long obterFuncionarioId(Principal principal) {
 
         if (principal == null || principal.getName() == null) {
-            throw new IllegalStateException(
+            throw new NaoAutenticadoException(
                     "Funcionário não autenticado."
             );
         }
@@ -366,7 +368,7 @@ public class FuncionarioController {
 
         } catch (NumberFormatException e) {
 
-            throw new IllegalStateException(
+            throw new NaoAutenticadoException(
                     "Identificação do funcionário autenticado inválida."
             );
         }

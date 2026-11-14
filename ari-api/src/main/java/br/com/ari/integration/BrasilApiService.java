@@ -1,5 +1,6 @@
 package br.com.ari.integration;
 
+import br.com.ari.exception.IntegracaoException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -23,14 +24,14 @@ public class BrasilApiService {
                     .body(BrasilApiCnpjResponse.class);
 
             if (response == null) {
-                throw new IllegalStateException(
+                throw new IntegracaoException(
                         "A Brasil API não retornou dados para o CNPJ."
                 );
             }
 
             return response;
         } catch (RestClientException e) {
-            throw new IllegalArgumentException(
+            throw new IntegracaoException(
                     "Não foi possível consultar o CNPJ na Brasil API.",
                     e
             );
@@ -45,14 +46,14 @@ public class BrasilApiService {
                     .body(BrasilApiCepResponse.class);
 
             if (response == null) {
-                throw new IllegalStateException(
+                throw new IntegracaoException(
                         "A Brasil API não retornou dados para o CEP."
                 );
             }
 
             return response;
         } catch (RestClientException e) {
-            throw new IllegalArgumentException(
+            throw new IntegracaoException(
                     "Não foi possível consultar o CEP na Brasil API.",
                     e
             );

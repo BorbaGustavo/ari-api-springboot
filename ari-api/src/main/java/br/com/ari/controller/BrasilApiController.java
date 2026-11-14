@@ -1,5 +1,6 @@
 package br.com.ari.controller;
 
+import br.com.ari.exception.RequisicaoInvalidaException;
 import br.com.ari.integration.BrasilApiCepResponse;
 import br.com.ari.integration.BrasilApiCnpjResponse;
 import br.com.ari.integration.BrasilApiService;
@@ -43,7 +44,7 @@ public class BrasilApiController {
 
     private void validarNumeros(String valor, int tamanho, String campo) {
         if (valor == null || !valor.matches("\\d{" + tamanho + "}")) {
-            throw new IllegalArgumentException(
+            throw new RequisicaoInvalidaException(
                     campo + " deve conter " + tamanho + " números."
             );
         }

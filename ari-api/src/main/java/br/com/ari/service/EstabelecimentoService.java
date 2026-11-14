@@ -1,6 +1,7 @@
 
 package br.com.ari.service;
 
+import br.com.ari.exception.RecursoNaoEncontradoException;
 import br.com.ari.dao.EstabelecimentoDAO;
 import br.com.ari.dto.*;
 import br.com.ari.integration.BrasilApiCepResponse;
@@ -430,7 +431,7 @@ public class EstabelecimentoService {
 
         return estabelecimentoDAO.buscarPorId(id)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new RecursoNaoEncontradoException(
                                 "Estabelecimento não encontrado."
                         )
                 );
@@ -439,7 +440,7 @@ public class EstabelecimentoService {
     private int verificarAtualizacao(int linhasAfetadas) {
 
         if (linhasAfetadas == 0) {
-            throw new IllegalArgumentException(
+            throw new RecursoNaoEncontradoException(
                     "Estabelecimento não encontrado ou nenhum registro foi atualizado."
             );
         }

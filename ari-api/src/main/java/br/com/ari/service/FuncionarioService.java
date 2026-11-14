@@ -1,6 +1,8 @@
 
 package br.com.ari.service;
 
+import br.com.ari.exception.CredenciaisInvalidasException;
+import br.com.ari.exception.RecursoNaoEncontradoException;
 import br.com.ari.dao.FuncionarioDAO;
 import br.com.ari.dto.FuncionarioLoginDTO;
 import br.com.ari.dto.FuncionarioRequestDTO;
@@ -489,13 +491,13 @@ public class FuncionarioService {
         Funcionario funcionario = funcionarioDAO
                 .buscarPorEmailLogin(email)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new CredenciaisInvalidasException(
                                 "E-mail ou senha inválidos."
                         )
                 );
 
         if (!STATUS_ATIVO.equals(funcionario.getStFuncionario())) {
-            throw new IllegalArgumentException(
+            throw new CredenciaisInvalidasException(
                     "E-mail ou senha inválidos."
             );
         }
@@ -506,7 +508,7 @@ public class FuncionarioService {
         );
 
         if (!senhaValida) {
-            throw new IllegalArgumentException(
+            throw new CredenciaisInvalidasException(
                     "E-mail ou senha inválidos."
             );
         }
@@ -593,7 +595,7 @@ public class FuncionarioService {
 
         Funcionario admin = funcionarioDAO.buscarPorId(id)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new RecursoNaoEncontradoException(
                                 "Funcionário administrador não encontrado."
                         )
                 );
@@ -621,7 +623,7 @@ public class FuncionarioService {
 
         Funcionario funcionario = funcionarioDAO.buscarPorId(id)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new RecursoNaoEncontradoException(
                                 "Funcionário não encontrado."
                         )
                 );
@@ -648,7 +650,7 @@ public class FuncionarioService {
 
         Funcionario funcionario = funcionarioDAO.buscarPorId(id)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new RecursoNaoEncontradoException(
                                 "Funcionário não encontrado."
                         )
                 );

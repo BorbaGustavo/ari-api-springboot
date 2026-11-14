@@ -1,6 +1,8 @@
 
 package br.com.ari.service;
 
+import br.com.ari.exception.RecursoNaoEncontradoException;
+import br.com.ari.exception.SessaoInvalidaException;
 import br.com.ari.dao.AvisoAcolhimentoDAO;
 import br.com.ari.dao.UsuarioDAO;
 import br.com.ari.dao.EstabelecimentoDAO;
@@ -112,7 +114,7 @@ public class AvisoAcolhimentoService {
                 estabelecimentoDAO.buscarPorId(
                         dto.cdEstabelecimento()
                 ).orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new RecursoNaoEncontradoException(
                                 "Estabelecimento não encontrado."
                         )
                 );
@@ -408,7 +410,7 @@ public class AvisoAcolhimentoService {
 
         SessaoWeb sessao = sessaoWebService.buscarSessaoAtiva(uuid)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new SessaoInvalidaException(
                                 "Sessão inválida ou expirada. "
                                         + "Faça login novamente."
                         )
@@ -425,7 +427,7 @@ public class AvisoAcolhimentoService {
         Usuario usuario = usuarioDAO.buscarPorId(
                 sessao.getCdUsuario()
         ).orElseThrow(() ->
-                new IllegalArgumentException(
+                new RecursoNaoEncontradoException(
                         "Usuária não encontrada."
                 )
         );
@@ -532,7 +534,7 @@ public class AvisoAcolhimentoService {
 
         Funcionario funcionario = funcionarioDAO.buscarPorId(id)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new RecursoNaoEncontradoException(
                                 "Funcionário não encontrado."
                         )
                 );
@@ -551,7 +553,7 @@ public class AvisoAcolhimentoService {
 
         return avisoAcolhimentoDAO.buscarPorId(id)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new RecursoNaoEncontradoException(
                                 "Aviso de acolhimento não encontrado."
                         )
                 );

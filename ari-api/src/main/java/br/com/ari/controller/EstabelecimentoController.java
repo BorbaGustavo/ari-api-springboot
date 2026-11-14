@@ -2,8 +2,8 @@
 package br.com.ari.controller;
 
 import br.com.ari.dto.*;
-
 import br.com.ari.exception.NaoAutenticadoException;
+import br.com.ari.exception.RecursoNaoEncontradoException;
 import br.com.ari.model.Estabelecimento;
 
 import br.com.ari.service.EstabelecimentoService;
@@ -174,10 +174,13 @@ public class EstabelecimentoController {
     public ResponseEntity<EstabelecimentoResponseDTO> buscarPorId(
             @PathVariable Long id) {
 
-        return estabelecimentoService.buscarPorIdAtivo(id)
-                .map(this::converterParaResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Estabelecimento estabelecimento = estabelecimentoService
+                .buscarPorIdAtivo(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Estabelecimento não encontrado."
+                ));
+
+        return ResponseEntity.ok(converterParaResponse(estabelecimento));
     }
 
     // =====================================================

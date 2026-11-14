@@ -1,6 +1,7 @@
 
 package br.com.ari.service;
 
+import br.com.ari.exception.RecursoNaoEncontradoException;
 import br.com.ari.dao.CondicaoApoioDAO;
 import br.com.ari.dao.FuncionarioDAO;
 
@@ -390,7 +391,7 @@ public class CondicaoApoioService {
 
         Funcionario admin = funcionarioDAO.buscarPorId(id)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new RecursoNaoEncontradoException(
                                 "Funcionário administrador não encontrado."
                         )
                 );
@@ -423,7 +424,7 @@ public class CondicaoApoioService {
         CondicaoApoio condicao =
                 condicaoApoioDAO.buscarPorId(cdCondicaoApoio)
                         .orElseThrow(() ->
-                                new IllegalArgumentException(
+                                new RecursoNaoEncontradoException(
                                         "Condição de apoio não encontrada."
                                 )
                         );

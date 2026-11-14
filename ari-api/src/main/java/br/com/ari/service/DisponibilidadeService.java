@@ -1,5 +1,6 @@
 package br.com.ari.service;
 
+import br.com.ari.exception.RecursoNaoEncontradoException;
 import br.com.ari.dao.DisponibilidadeDAO;
 import br.com.ari.dao.FuncionarioDAO;
 import br.com.ari.dto.DisponibilidadeRequestDTO;
@@ -289,7 +290,7 @@ public class DisponibilidadeService {
         validarId(id);
 
         Funcionario admin = funcionarioDAO.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Funcionário administrador não encontrado."
                 ));
 
@@ -323,7 +324,7 @@ public class DisponibilidadeService {
 
         Disponibilidade disponibilidade = disponibilidadeDAO
                 .buscarPorId(cdDisponibilidade)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Disponibilidade não encontrada."
                 ));
 

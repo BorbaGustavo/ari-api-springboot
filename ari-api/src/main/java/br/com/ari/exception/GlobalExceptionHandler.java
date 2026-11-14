@@ -96,6 +96,45 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(ConflitoException.class)
+    public ResponseEntity<ApiErrorResponse> tratarConflito(
+            ConflitoException exception,
+            HttpServletRequest request) {
+
+        return resposta(
+                HttpStatus.CONFLICT,
+                mensagem(exception),
+                request,
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> tratarOperacaoNaoConcluida(
+            Exception exception,
+            HttpServletRequest request) {
+
+        return resposta(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                mensagem(exception),
+                request,
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(RecursoNaoEncontradoException.class)
+    public ResponseEntity<ApiErrorResponse> tratarRecursoNaoEncontrado(
+            RecursoNaoEncontradoException exception,
+            HttpServletRequest request) {
+
+        return resposta(
+                HttpStatus.NOT_FOUND,
+                mensagem(exception),
+                request,
+                Map.of()
+        );
+    }
+
     @ExceptionHandler(NaoAutenticadoException.class)
     public ResponseEntity<ApiErrorResponse> tratarNaoAutenticado(
             NaoAutenticadoException exception,

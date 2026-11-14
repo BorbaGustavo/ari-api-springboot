@@ -1,6 +1,7 @@
 
 package br.com.ari.service;
 
+import br.com.ari.exception.RecursoNaoEncontradoException;
 import br.com.ari.dao.SessaoWebDAO;
 import br.com.ari.model.SessaoWeb;
 
@@ -141,7 +142,7 @@ public class SessaoWebService {
 
         SessaoWeb sessao = sessaoWebDAO.buscarPorId(id)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new RecursoNaoEncontradoException(
                                 "Sessão não encontrada."
                         )
                 );
