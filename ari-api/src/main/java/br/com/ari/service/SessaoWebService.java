@@ -77,6 +77,11 @@ public class SessaoWebService {
         );
     }
 
+    // Cria uma sessão sem vínculo com usuária para acesso ao mapa público.
+    public SessaoWeb criarAnonima() {
+        return criar(null);
+    }
+
     // ==================================================
     // BUSCAR SESSÃO POR UUID
     // ==================================================
@@ -85,7 +90,7 @@ public class SessaoWebService {
 
         validarUuid(uuid);
 
-        return sessaoWebDAO.buscarPorUuid(uuid);
+        return sessaoWebDAO.buscarPorUuid(uuid.trim());
     }
 
     // ==================================================
@@ -182,11 +187,19 @@ public class SessaoWebService {
             );
         }
 
-        try {
-            UUID.fromString(uuid);
-        } catch (IllegalArgumentException e) {
+        String identificador = uuid.trim();
+
+        // DS_UUID é VARCHAR2(36). O identificador é opaco:
+        // aceita UUID padrão e identificadores de teste como "uuid-001".
+        if (identificador.length() > 36) {
             throw new IllegalArgumentException(
-                    "UUID inválido."
+                    "Identificador da sessão deve ter no máximo 36 caracteres."
+            );
+        }
+
+        if (identificador.chars().anyMatch(Character::isWhitespace)) {
+            throw new IllegalArgumentException(
+                    "Identificador da sessão não pode conter espaços."
             );
         }
     }
