@@ -1,3 +1,4 @@
+
 package br.com.ari.dto;
 
 import jakarta.validation.constraints.NotBlank;
@@ -10,13 +11,18 @@ public record EstabelecimentoStatusUpdateDTO(
 
         @NotBlank(message = "Informe o status do estabelecimento.")
         @Pattern(
-                regexp = "ATIVO|INATIVO",
-                message = "O status deve ser ATIVO ou INATIVO."
+                regexp = "PENDENTE|ATIVO|SUSPENSO|REPROVADO",
+                message = "Status inválido. Utilize PENDENTE, ATIVO, SUSPENSO ou REPROVADO."
         )
         @Schema(
                 description = "Novo status do estabelecimento.",
-                example = "INATIVO",
-                allowableValues = {"ATIVO", "INATIVO"}
+                example = "SUSPENSO",
+                allowableValues = {
+                        "PENDENTE",
+                        "ATIVO",
+                        "SUSPENSO",
+                        "REPROVADO"
+                }
         )
         String stEstabelecimento
 

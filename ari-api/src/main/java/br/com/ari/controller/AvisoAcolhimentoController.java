@@ -174,8 +174,8 @@ public class AvisoAcolhimentoController {
     }
 
     // =====================================================
-    // IDENTIFICAR FUNCIONÁRIO AUTENTICADO
-    // =====================================================
+// IDENTIFICAR FUNCIONÁRIO AUTENTICADO
+// =====================================================
 
     private Long obterFuncionarioId(Principal principal) {
 
@@ -185,8 +185,17 @@ public class AvisoAcolhimentoController {
             );
         }
 
-        return funcionarioService.buscarIdFuncionarioAutenticado(
-                principal.getName()
-        );
+        try {
+            Long cdFuncionario = Long.valueOf(principal.getName());
+
+            return funcionarioService.buscarIdFuncionarioAutenticado(
+                    cdFuncionario
+            );
+
+        } catch (NumberFormatException e) {
+            throw new NaoAutenticadoException(
+                    "Identificação do funcionário autenticado inválida."
+            );
+        }
     }
 }

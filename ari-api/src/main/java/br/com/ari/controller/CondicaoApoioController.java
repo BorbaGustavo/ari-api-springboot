@@ -161,8 +161,8 @@ public class CondicaoApoioController {
     }
 
     // =====================================================
-    // IDENTIFICAR ADMIN AUTENTICADO
-    // =====================================================
+// IDENTIFICAR ADMIN AUTENTICADO
+// =====================================================
 
     private Long obterAdminId(Principal principal) {
 
@@ -172,9 +172,18 @@ public class CondicaoApoioController {
             );
         }
 
-        return funcionarioService.buscarIdAdminAutenticado(
-                principal.getName()
-        );
+        try {
+            Long cdFuncionario = Long.valueOf(principal.getName());
+
+            return funcionarioService.buscarIdAdminAutenticado(
+                    cdFuncionario
+            );
+
+        } catch (NumberFormatException e) {
+            throw new NaoAutenticadoException(
+                    "Identificação do funcionário autenticado inválida."
+            );
+        }
     }
 
 }

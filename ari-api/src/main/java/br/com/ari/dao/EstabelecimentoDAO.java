@@ -257,7 +257,10 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
         );
     }
 
+
     // ATUALIZAR STATUS DO ESTABELECIMENTO
+    // Somente estabelecimentos ATIVOS podem manter o acolhimento habilitado.
+
     public int atualizarStatus(Long id, String status) {
 
         String sql = """
@@ -266,8 +269,9 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
                 ST_ESTABELECIMENTO = ?,
                 FL_ACOLHIMENTO_ATIVO =
                     CASE
-                        WHEN ? = 'INATIVO' THEN 'N'
-                        ELSE FL_ACOLHIMENTO_ATIVO
+                        WHEN ? = 'ATIVO'
+                            THEN FL_ACOLHIMENTO_ATIVO
+                        ELSE 'N'
                     END
             WHERE CD_ESTABELECIMENTO = ?
             """;
@@ -279,6 +283,8 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
                 id
         );
     }
+
+
 
     // DESATIVAR RECEBIMENTO DE ACOLHIMENTOS
     // Preserva o cadastro e o histórico do estabelecimento.

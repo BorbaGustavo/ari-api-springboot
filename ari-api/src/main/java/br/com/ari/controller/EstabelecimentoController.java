@@ -45,6 +45,7 @@ public class EstabelecimentoController {
 
     // =====================================================
     // CADASTRAR ESTABELECIMENTO
+    // PÚBLICO
     // =====================================================
 
     @PostMapping
@@ -65,6 +66,7 @@ public class EstabelecimentoController {
 
     // =====================================================
     // ATUALIZAR ESTABELECIMENTO
+    // ADMIN
     // =====================================================
 
     @PutMapping("/{id}")
@@ -86,6 +88,7 @@ public class EstabelecimentoController {
 
     // =====================================================
     // EXCLUIR ESTABELECIMENTO
+    // ADMIN
     // =====================================================
 
     @DeleteMapping("/{id}")
@@ -106,6 +109,7 @@ public class EstabelecimentoController {
 
     // =====================================================
     // BUSCAR ESTABELECIMENTOS PRÓXIMOS
+    // PÚBLICO
     // =====================================================
 
     @GetMapping("/proximos")
@@ -141,6 +145,7 @@ public class EstabelecimentoController {
 
     // =====================================================
     // BUSCAR ESTABELECIMENTO POR ID
+    // PÚBLICO
     // =====================================================
 
     @GetMapping("/{id}")
@@ -159,6 +164,7 @@ public class EstabelecimentoController {
 
     // =====================================================
     // HABILITAR OU DESABILITAR ACOLHIMENTO
+    // ADMIN
     // =====================================================
 
     @PatchMapping("/{id}/acolhimento")
@@ -180,6 +186,7 @@ public class EstabelecimentoController {
 
     // =====================================================
     // CONFIGURAR OU REMOVER SUSPENSÃO TEMPORÁRIA
+    // ADMIN
     // =====================================================
 
     @PatchMapping("/{id}/suspensao")
@@ -199,13 +206,23 @@ public class EstabelecimentoController {
         return ResponseEntity.noContent().build();
     }
 
+    // =====================================================
+    // ATUALIZAR STATUS
+    // ADMIN
+    // =====================================================
+
     @PatchMapping("/{id}/status")
+    @Operation(
+            summary = "Atualizar status",
+            description = "Altera o status do estabelecimento."
+    )
     public ResponseEntity<Void> atualizarStatus(
             Principal principal,
             @PathVariable Long id,
             @Valid @RequestBody EstabelecimentoStatusUpdateDTO dto) {
 
         validarAdmin(principal, id);
+
         estabelecimentoService.atualizarStatus(id, dto);
 
         return ResponseEntity.noContent().build();
@@ -225,8 +242,21 @@ public class EstabelecimentoController {
             );
         }
 
+        Long cdFuncionarioAdmin;
+
+        try {
+            // Principal agora contém o ID do funcionário.
+            cdFuncionarioAdmin = Long.valueOf(principal.getName());
+
+        } catch (NumberFormatException e) {
+            throw new NaoAutenticadoException(
+                    "Identificação do funcionário autenticado inválida."
+            );
+        }
+
+        // Verifica se é ADMIN e pertence ao estabelecimento informado.
         funcionarioService.validarAcessoAdminEstabelecimento(
-                principal.getName(),
+                cdFuncionarioAdmin,
                 cdEstabelecimento
         );
     }

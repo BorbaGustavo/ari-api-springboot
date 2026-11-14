@@ -2,40 +2,58 @@
 package br.com.ari.service;
 
 import br.com.ari.dao.FuncionarioDAO;
-
-import br.com.ari.dto.FuncionarioRequestDTO;
-import br.com.ari.dto.FuncionarioUpdateDTO;
-import br.com.ari.dto.FuncionarioSenhaUpdateDTO;
 import br.com.ari.dto.FuncionarioLoginDTO;
+import br.com.ari.dto.FuncionarioRequestDTO;
 import br.com.ari.dto.FuncionarioResponseDTO;
+import br.com.ari.dto.FuncionarioSenhaUpdateDTO;
+import br.com.ari.dto.FuncionarioUpdateDTO;
 import br.com.ari.dto.ResponsavelEstabelecimentoRequestDTO;
-
 import br.com.ari.model.Funcionario;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
 public class FuncionarioService {
 
+    private static final String PERFIL_ADMIN = "ADMIN";
+    private static final String PERFIL_ATENDENTE = "ATENDENTE";
+
+    private static final String STATUS_ATIVO = "ATIVO";
+    private static final String STATUS_INATIVO = "INATIVO";
+
+    private static final String NAO_TREINADO = "N";
+
     private final FuncionarioDAO funcionarioDAO;
     private final PasswordEncoder passwordEncoder;
+    private final FuncionarioSessaoService funcionarioSessaoService;
 
-    // CONSTRUTOR
     public FuncionarioService(
             FuncionarioDAO funcionarioDAO,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            FuncionarioSessaoService funcionarioSessaoService) {
 
         this.funcionarioDAO = funcionarioDAO;
         this.passwordEncoder = passwordEncoder;
+        this.funcionarioSessaoService = funcionarioSessaoService;
     }
 
+    // =====================================================
     // CADASTRAR FUNCIONÁRIO
-    // O estabelecimento é identificado pelo ADMIN autenticado.
+    // Somente ADMIN.
+    // O funcionário pertence ao estabelecimento do ADMIN.
+    // Todo novo funcionário começa ATENDENTE, NÃO TREINADO
+    // e ATIVO.
+    // =====================================================
+
+    @Transactional
     public int criar(
             Long cdFuncionarioAdmin,
             FuncionarioRequestDTO dto) {
@@ -48,53 +66,55 @@ public class FuncionarioService {
             );
         }
 
-        validarDadosCadastro(dto);
+        validarNome(dto.nmFuncionario());
+        validarEmail(dto.dsEmailLogin());
+        validarSenha(dto.dsSenha());
 
-        String email = dto.dsEmailLogin()
-                .trim()
-                .toLowerCase();
+        String email = normalizarEmail(dto.dsEmailLogin());
 
-        // VERIFICAR E-MAIL DUPLICADO
-        if (funcionarioDAO.buscarPorEmailLogin(email).isPresent()) {
-            throw new IllegalArgumentException(
-                    "Este e-mail já está sendo utilizado."
-            );
-        }
+        validarEmailDisponivel(email, null);
 
-        // GERAR HASH BCrypt
-        String senhaHash = passwordEncoder.encode(dto.dsSenha());
-
-        // TREINAMENTO PADRÃO: NÃO TREINADO
-        String flTreinado = dto.flTreinado() == null
-                ? "N"
-                : dto.flTreinado();
-
-        validarTreinamento(flTreinado);
-
-        // CONVERTER DTO PARA MODEL
         Funcionario funcionario = Funcionario.builder()
                 .cdEstabelecimento(admin.getCdEstabelecimento())
                 .nmFuncionario(dto.nmFuncionario().trim())
-                .nrTelefone(dto.nrTelefone())
+                .nrTelefone(normalizarTelefone(dto.nrTelefone()))
                 .dsEmailLogin(email)
-                .dsSenhaHash(senhaHash)
-                .tpPerfil(dto.tpPerfil())
-                .flTreinado(flTreinado)
-                .stFuncionario("ATIVO")
+                .dsSenhaHash(passwordEncoder.encode(dto.dsSenha()))
+                .tpPerfil(PERFIL_ATENDENTE)
+                .flTreinado(NAO_TREINADO)
+                .stFuncionario(STATUS_ATIVO)
                 .build();
 
-        return funcionarioDAO.criar(funcionario);
+        try {
+            int linhasAfetadas = funcionarioDAO.criar(funcionario);
+
+            validarLinhasAfetadas(
+                    linhasAfetadas,
+                    "Não foi possível cadastrar o funcionário."
+            );
+
+            return linhasAfetadas;
+
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException(
+                    "Não foi possível cadastrar. Verifique se o e-mail já está sendo utilizado.",
+                    e
+            );
+        }
     }
 
+    // =====================================================
+    // CADASTRAR ADMINISTRADOR INICIAL
+    // Utilizado durante a criação do estabelecimento.
+    // Deve participar da mesma transação do estabelecimento.
+    // =====================================================
+
+    @Transactional
     public int criarAdministradorInicial(
             Long cdEstabelecimento,
             ResponsavelEstabelecimentoRequestDTO dto) {
 
-        if (cdEstabelecimento == null || cdEstabelecimento <= 0) {
-            throw new IllegalArgumentException(
-                    "Estabelecimento inválido."
-            );
-        }
+        validarId(cdEstabelecimento);
 
         if (dto == null) {
             throw new IllegalArgumentException(
@@ -102,67 +122,113 @@ public class FuncionarioService {
             );
         }
 
-        String email = dto.dsEmailLogin().trim().toLowerCase();
+        validarNome(dto.nmResponsavel());
+        validarEmail(dto.dsEmailLogin());
+        validarSenha(dto.dsSenha());
 
-        if (funcionarioDAO.buscarPorEmailLogin(email).isPresent()) {
-            throw new IllegalArgumentException(
-                    "Este e-mail já está sendo utilizado."
-            );
-        }
+        String email = normalizarEmail(dto.dsEmailLogin());
+
+        validarEmailDisponivel(email, null);
 
         Funcionario administrador = Funcionario.builder()
                 .cdEstabelecimento(cdEstabelecimento)
                 .nmFuncionario(dto.nmResponsavel().trim())
-                .nrTelefone(dto.nrTelefone())
+                .nrTelefone(normalizarTelefone(dto.nrTelefone()))
                 .dsEmailLogin(email)
                 .dsSenhaHash(passwordEncoder.encode(dto.dsSenha()))
-                .tpPerfil("ADMIN")
-                .flTreinado("N")
-                .stFuncionario("ATIVO")
+                .tpPerfil(PERFIL_ADMIN)
+                .flTreinado(NAO_TREINADO)
+                .stFuncionario(STATUS_ATIVO)
                 .build();
 
-        int linhasAfetadas = funcionarioDAO.criar(administrador);
-        if (linhasAfetadas == 0) {
-            throw new IllegalStateException(
+        try {
+            int linhasAfetadas = funcionarioDAO.criar(administrador);
+
+            validarLinhasAfetadas(
+                    linhasAfetadas,
                     "Não foi possível cadastrar o administrador."
             );
-        }
 
-        return linhasAfetadas;
+            return linhasAfetadas;
+
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException(
+                    "Não foi possível cadastrar o administrador. Verifique se o e-mail já está sendo utilizado.",
+                    e
+            );
+        }
     }
 
+    // =====================================================
     // BUSCAR FUNCIONÁRIO POR ID
-    // Somente ADMIN pode consultar funcionários da própria empresa.
-    public Funcionario buscarPorId(
+    // Somente ADMIN do mesmo estabelecimento.
+    // =====================================================
+
+    public FuncionarioResponseDTO buscarPorId(
             Long cdFuncionarioAdmin,
             Long cdFuncionarioAlvo) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
 
-        return buscarFuncionarioDaEmpresa(
+        Funcionario funcionario = buscarFuncionarioDaEmpresa(
                 cdFuncionarioAlvo,
                 admin.getCdEstabelecimento()
         );
+
+        return converterParaResponse(funcionario);
     }
 
-    // LISTAR FUNCIONÁRIOS DA EMPRESA
-    public List<Funcionario> buscarPorEstabelecimento(
+    // =====================================================
+    // LISTAR FUNCIONÁRIOS DO ESTABELECIMENTO
+    // Somente ADMIN.
+    // Inclui funcionários ATIVOS e INATIVOS.
+    // =====================================================
+
+    public List<FuncionarioResponseDTO> buscarPorEstabelecimento(
             Long cdFuncionarioAdmin) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
 
         return funcionarioDAO.buscarPorEstabelecimento(
-                admin.getCdEstabelecimento()
-        );
+                        admin.getCdEstabelecimento()
+                )
+                .stream()
+                .map(this::converterParaResponse)
+                .toList();
     }
 
-    // ATUALIZAR DADOS DO FUNCIONÁRIO
+    // =====================================================
+    // BUSCAR DADOS DO FUNCIONÁRIO AUTENTICADO
+    // ADMIN e ATENDENTE ativos.
+    // =====================================================
+
+    public FuncionarioResponseDTO buscarFuncionarioAutenticado(
+            Long cdFuncionarioAutenticado) {
+
+        Funcionario funcionario = buscarFuncionarioAtivo(
+                cdFuncionarioAutenticado
+        );
+
+        return converterParaResponse(funcionario);
+    }
+
+    // =====================================================
+    // ATUALIZAR OS PRÓPRIOS DADOS
+    // ADMIN e ATENDENTE podem atualizar:
+    // nome, telefone e e-mail.
+    //
+    // Não altera perfil, treinamento, status ou senha.
+    // O ID vem da autenticação, não do corpo da requisição.
+    // =====================================================
+
+    @Transactional
     public int atualizar(
-            Long cdFuncionarioAdmin,
-            Long cdFuncionarioAlvo,
+            Long cdFuncionarioAutenticado,
             FuncionarioUpdateDTO dto) {
 
-        Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
+        Funcionario existente = buscarFuncionarioAtivo(
+                cdFuncionarioAutenticado
+        );
 
         if (dto == null) {
             throw new IllegalArgumentException(
@@ -170,94 +236,94 @@ public class FuncionarioService {
             );
         }
 
-        validarDadosAtualizacao(dto);
+        validarNome(dto.nmFuncionario());
+        validarEmail(dto.dsEmailLogin());
 
-        Funcionario existente = buscarFuncionarioDaEmpresa(
-                cdFuncionarioAlvo,
-                admin.getCdEstabelecimento()
+        String email = normalizarEmail(dto.dsEmailLogin());
+
+        validarEmailDisponivel(
+                email,
+                cdFuncionarioAutenticado
         );
 
-        validarFuncionarioAtivo(existente);
-
-        String email = dto.dsEmailLogin()
-                .trim()
-                .toLowerCase();
-
-        // VERIFICAR SE O E-MAIL PERTENCE A OUTRO FUNCIONÁRIO
-        Optional<Funcionario> funcionarioComEmail =
-                funcionarioDAO.buscarPorEmailLogin(email);
-
-        if (funcionarioComEmail.isPresent()
-                && !funcionarioComEmail.get()
-                .getCdFuncionario()
-                .equals(cdFuncionarioAlvo)) {
-
-            throw new IllegalArgumentException(
-                    "Este e-mail já está sendo utilizado."
-            );
-        }
-
-        validarTreinamento(dto.flTreinado());
-
-        // CONVERTER DTO PARA MODEL
         Funcionario funcionario = Funcionario.builder()
-                .cdFuncionario(cdFuncionarioAlvo)
-                .cdEstabelecimento(admin.getCdEstabelecimento())
+                .cdFuncionario(existente.getCdFuncionario())
+                .cdEstabelecimento(existente.getCdEstabelecimento())
                 .nmFuncionario(dto.nmFuncionario().trim())
-                .nrTelefone(dto.nrTelefone())
+                .nrTelefone(normalizarTelefone(dto.nrTelefone()))
                 .dsEmailLogin(email)
-                .tpPerfil(dto.tpPerfil())
-                .flTreinado(dto.flTreinado())
+                .dsSenhaHash(existente.getDsSenhaHash())
+                .tpPerfil(existente.getTpPerfil())
+                .flTreinado(existente.getFlTreinado())
                 .stFuncionario(existente.getStFuncionario())
+                .dtCadastro(existente.getDtCadastro())
                 .build();
 
-        return funcionarioDAO.atualizar(funcionario);
+        try {
+            int linhasAfetadas = funcionarioDAO.atualizar(funcionario);
+
+            validarLinhasAfetadas(
+                    linhasAfetadas,
+                    "Não foi possível atualizar os dados do funcionário."
+            );
+
+            return linhasAfetadas;
+
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException(
+                    "Não foi possível atualizar. O e-mail informado já está sendo utilizado.",
+                    e
+            );
+        }
     }
 
-    // ATUALIZAR SENHA DO FUNCIONÁRIO
-    // Conforme RN17, somente ADMIN pode realizar essa operação.
+    // =====================================================
+    // ATUALIZAR A PRÓPRIA SENHA
+    // ADMIN e ATENDENTE ativos.
+    // =====================================================
+
+    @Transactional
     public int atualizarSenha(
-            Long cdFuncionarioAdmin,
-            Long cdFuncionarioAlvo,
+            Long cdFuncionarioAutenticado,
             FuncionarioSenhaUpdateDTO dto) {
 
-        Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
-
-        if (dto == null
-                || dto.dsNovaSenha() == null
-                || dto.dsNovaSenha().isBlank()) {
-
-            throw new IllegalArgumentException(
-                    "Nova senha não informada."
-            );
-        }
-
-        if (dto.dsNovaSenha().length() < 8) {
-            throw new IllegalArgumentException(
-                    "A senha deve ter pelo menos 8 caracteres."
-            );
-        }
-
-        Funcionario existente = buscarFuncionarioDaEmpresa(
-                cdFuncionarioAlvo,
-                admin.getCdEstabelecimento()
+        Funcionario funcionario = buscarFuncionarioAtivo(
+                cdFuncionarioAutenticado
         );
 
-        validarFuncionarioAtivo(existente);
+        if (dto == null) {
+            throw new IllegalArgumentException(
+                    "Dados da nova senha não informados."
+            );
+        }
 
-        // GERAR HASH BCrypt
+        validarSenha(dto.dsNovaSenha());
+
         String senhaHash = passwordEncoder.encode(
                 dto.dsNovaSenha()
         );
 
-        return funcionarioDAO.atualizarSenha(
-                cdFuncionarioAlvo,
+        int linhasAfetadas = funcionarioDAO.atualizarSenha(
+                funcionario.getCdFuncionario(),
                 senhaHash
         );
+
+        validarLinhasAfetadas(
+                linhasAfetadas,
+                "Não foi possível atualizar a senha."
+        );
+
+        return linhasAfetadas;
     }
 
+    // =====================================================
     // INATIVAR FUNCIONÁRIO
-    // Preserva o histórico de avisos.
+    // Somente ADMIN do mesmo estabelecimento.
+    // Não permite inativar a própria conta.
+    // Encerra todas as sessões do funcionário.
+    // =====================================================
+
+    @Transactional
     public int inativar(
             Long cdFuncionarioAdmin,
             Long cdFuncionarioAlvo) {
@@ -269,45 +335,99 @@ public class FuncionarioService {
                 admin.getCdEstabelecimento()
         );
 
-        if ("INATIVO".equals(funcionario.getStFuncionario())) {
+        if (Objects.equals(
+                funcionario.getCdFuncionario(),
+                admin.getCdFuncionario())) {
+
+            throw new IllegalArgumentException(
+                    "O administrador não pode inativar a própria conta por esta operação."
+            );
+        }
+
+        if (STATUS_INATIVO.equals(funcionario.getStFuncionario())) {
             throw new IllegalStateException(
                     "Este funcionário já está inativo."
             );
         }
 
-        return funcionarioDAO.inativar(
+        int linhasAfetadas = funcionarioDAO.inativar(
                 cdFuncionarioAlvo,
                 admin.getCdEstabelecimento()
         );
+
+        validarLinhasAfetadas(
+                linhasAfetadas,
+                "Não foi possível inativar o funcionário."
+        );
+
+        funcionarioSessaoService.encerrarTodasDoFuncionario(
+                cdFuncionarioAlvo
+        );
+
+        return linhasAfetadas;
     }
 
+    // =====================================================
     // EXCLUIR FUNCIONÁRIO
-    // A exclusão física depende da existência de referências históricas.
+    // Exclusão física.
+    // Somente ADMIN do mesmo estabelecimento.
+    // Não permite excluir a própria conta.
+    // =====================================================
+
+    @Transactional
     public int excluir(
             Long cdFuncionarioAdmin,
             Long cdFuncionarioAlvo) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
 
-        buscarFuncionarioDaEmpresa(
+        Funcionario funcionario = buscarFuncionarioDaEmpresa(
                 cdFuncionarioAlvo,
                 admin.getCdEstabelecimento()
         );
 
-        try {
+        if (Objects.equals(
+                funcionario.getCdFuncionario(),
+                admin.getCdFuncionario())) {
 
-            return funcionarioDAO.excluir(cdFuncionarioAlvo);
+            throw new IllegalArgumentException(
+                    "O administrador não pode excluir a própria conta por esta operação. "
+                            + "Para excluir seu cadastro, utilize a exclusão do estabelecimento."
+            );
+        }
+
+        try {
+            int linhasAfetadas = funcionarioDAO.excluir(
+                    cdFuncionarioAlvo
+            );
+
+            validarLinhasAfetadas(
+                    linhasAfetadas,
+                    "Não foi possível excluir o funcionário."
+            );
+
+            funcionarioSessaoService.encerrarTodasDoFuncionario(
+                    cdFuncionarioAlvo
+            );
+
+            return linhasAfetadas;
 
         } catch (DataIntegrityViolationException e) {
-            return funcionarioDAO.inativar(
-                    cdFuncionarioAlvo,
-                    admin.getCdEstabelecimento()
+            throw new IllegalStateException(
+                    "Não foi possível excluir o funcionário porque existem registros relacionados a ele.",
+                    e
             );
         }
     }
 
+    // =====================================================
     // AUTENTICAR FUNCIONÁRIO
-    public FuncionarioResponseDTO autenticar(FuncionarioLoginDTO dto) {
+    // ADMIN e ATENDENTE ativos podem fazer login.
+    // O treinamento não impede o login.
+    // =====================================================
+
+    public FuncionarioResponseDTO autenticar(
+            FuncionarioLoginDTO dto) {
 
         if (dto == null
                 || dto.dsEmailLogin() == null
@@ -320,27 +440,22 @@ public class FuncionarioService {
             );
         }
 
-        String email = dto.dsEmailLogin()
-                .trim()
-                .toLowerCase();
+        String email = normalizarEmail(dto.dsEmailLogin());
 
-        // BUSCAR FUNCIONÁRIO PELO E-MAIL
-        Funcionario funcionario =
-                funcionarioDAO.buscarPorEmailLogin(email)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "E-mail ou senha inválidos."
-                                )
-                        );
+        Funcionario funcionario = funcionarioDAO
+                .buscarPorEmailLogin(email)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "E-mail ou senha inválidos."
+                        )
+                );
 
-        // VERIFICAR SITUAÇÃO DO FUNCIONÁRIO
-        if (!"ATIVO".equals(funcionario.getStFuncionario())) {
+        if (!STATUS_ATIVO.equals(funcionario.getStFuncionario())) {
             throw new IllegalArgumentException(
                     "E-mail ou senha inválidos."
             );
         }
 
-        // COMPARAR SENHA COM HASH BCrypt
         boolean senhaValida = passwordEncoder.matches(
                 dto.dsSenha(),
                 funcionario.getDsSenhaHash()
@@ -355,7 +470,59 @@ public class FuncionarioService {
         return converterParaResponse(funcionario);
     }
 
+    // =====================================================
+    // BUSCAR ID DO ADMIN AUTENTICADO
+    // O Principal deve conter o ID numérico do funcionário.
+    // =====================================================
+
+    public Long buscarIdAdminAutenticado(Long cdFuncionario) {
+
+        Funcionario admin = buscarAdmin(cdFuncionario);
+
+        return admin.getCdFuncionario();
+    }
+
+    // =====================================================
+    // BUSCAR ID DO FUNCIONÁRIO AUTENTICADO
+    // ADMIN e ATENDENTE ativos.
+    // =====================================================
+
+    public Long buscarIdFuncionarioAutenticado(Long cdFuncionario) {
+
+        Funcionario funcionario = buscarFuncionarioAtivo(
+                cdFuncionario
+        );
+
+        return funcionario.getCdFuncionario();
+    }
+
+    // =====================================================
+    // VALIDAR ACESSO DO ADMIN AO ESTABELECIMENTO
+    // =====================================================
+
+    public void validarAcessoAdminEstabelecimento(
+            Long cdFuncionarioAdmin,
+            Long cdEstabelecimento) {
+
+        validarId(cdEstabelecimento);
+
+        Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
+
+        if (!Objects.equals(
+                admin.getCdEstabelecimento(),
+                cdEstabelecimento)) {
+
+            throw new IllegalArgumentException(
+                    "Você não possui acesso a este estabelecimento."
+            );
+        }
+    }
+
+    // =====================================================
     // CONVERTER MODEL PARA RESPONSE DTO
+    // Nunca retorna o hash da senha.
+    // =====================================================
+
     private FuncionarioResponseDTO converterParaResponse(
             Funcionario funcionario) {
 
@@ -372,7 +539,10 @@ public class FuncionarioService {
         );
     }
 
+    // =====================================================
     // BUSCAR E VALIDAR ADMIN
+    // =====================================================
+
     private Funcionario buscarAdmin(Long id) {
 
         validarId(id);
@@ -386,7 +556,7 @@ public class FuncionarioService {
 
         validarFuncionarioAtivo(admin);
 
-        if (!"ADMIN".equals(admin.getTpPerfil())) {
+        if (!PERFIL_ADMIN.equals(admin.getTpPerfil())) {
             throw new IllegalArgumentException(
                     "Acesso permitido somente para ADMIN."
             );
@@ -395,7 +565,10 @@ public class FuncionarioService {
         return admin;
     }
 
-    // BUSCAR FUNCIONÁRIO DA EMPRESA DO ADMIN
+    // =====================================================
+    // BUSCAR FUNCIONÁRIO DO ESTABELECIMENTO
+    // =====================================================
+
     private Funcionario buscarFuncionarioDaEmpresa(
             Long id,
             Long cdEstabelecimento) {
@@ -409,8 +582,9 @@ public class FuncionarioService {
                         )
                 );
 
-        if (!funcionario.getCdEstabelecimento()
-                .equals(cdEstabelecimento)) {
+        if (!Objects.equals(
+                funcionario.getCdEstabelecimento(),
+                cdEstabelecimento)) {
 
             throw new IllegalArgumentException(
                     "Funcionário não pertence ao seu estabelecimento."
@@ -420,93 +594,153 @@ public class FuncionarioService {
         return funcionario;
     }
 
+    // =====================================================
+    // BUSCAR FUNCIONÁRIO ATIVO
+    // =====================================================
+
+    private Funcionario buscarFuncionarioAtivo(Long id) {
+
+        validarId(id);
+
+        Funcionario funcionario = funcionarioDAO.buscarPorId(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Funcionário não encontrado."
+                        )
+                );
+
+        validarFuncionarioAtivo(funcionario);
+
+        return funcionario;
+    }
+
+    // =====================================================
     // VALIDAR SITUAÇÃO DO FUNCIONÁRIO
+    // =====================================================
+
     private void validarFuncionarioAtivo(Funcionario funcionario) {
 
-        if (!"ATIVO".equals(funcionario.getStFuncionario())) {
+        if (!STATUS_ATIVO.equals(funcionario.getStFuncionario())) {
             throw new IllegalStateException(
                     "Funcionário inativo não pode realizar esta operação."
             );
         }
     }
 
-    // VALIDAR DADOS DO CADASTRO
-    private void validarDadosCadastro(FuncionarioRequestDTO dto) {
+    // =====================================================
+    // VALIDAR E-MAIL DISPONÍVEL
+    // =====================================================
 
-        if (dto.nmFuncionario() == null
-                || dto.nmFuncionario().isBlank()) {
+    private void validarEmailDisponivel(
+            String email,
+            Long cdFuncionarioIgnorado) {
 
-            throw new IllegalArgumentException(
-                    "Nome é obrigatório."
-            );
+        Optional<Funcionario> funcionarioComEmail =
+                funcionarioDAO.buscarPorEmailLogin(email);
+
+        if (funcionarioComEmail.isPresent()) {
+
+            Long idEncontrado = funcionarioComEmail.get()
+                    .getCdFuncionario();
+
+            if (cdFuncionarioIgnorado == null
+                    || !idEncontrado.equals(cdFuncionarioIgnorado)) {
+
+                throw new IllegalArgumentException(
+                        "Este e-mail já está sendo utilizado."
+                );
+            }
         }
+    }
 
-        if (dto.dsEmailLogin() == null
-                || dto.dsEmailLogin().isBlank()) {
+    // =====================================================
+    // NORMALIZAR E-MAIL
+    // =====================================================
 
+    private String normalizarEmail(String email) {
+
+        if (email == null) {
             throw new IllegalArgumentException(
                     "E-mail de login é obrigatório."
             );
         }
 
-        if (dto.dsSenha() == null
-                || dto.dsSenha().length() < 8) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
 
+    // =====================================================
+    // NORMALIZAR TELEFONE
+    // =====================================================
+
+    private String normalizarTelefone(String telefone) {
+
+        if (telefone == null || telefone.isBlank()) {
+            return null;
+        }
+
+        return telefone.trim();
+    }
+
+    // =====================================================
+    // VALIDAR NOME
+    // =====================================================
+
+    private void validarNome(String nome) {
+
+        if (nome == null || nome.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Nome é obrigatório."
+            );
+        }
+
+        if (nome.trim().length() > 120) {
+            throw new IllegalArgumentException(
+                    "O nome deve ter no máximo 120 caracteres."
+            );
+        }
+    }
+
+    // =====================================================
+    // VALIDAR E-MAIL
+    // =====================================================
+
+    private void validarEmail(String email) {
+
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException(
+                    "E-mail de login é obrigatório."
+            );
+        }
+
+        String emailNormalizado = email.trim();
+
+        if (emailNormalizado.length() > 150
+                || !emailNormalizado.matches(
+                "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+
+            throw new IllegalArgumentException(
+                    "E-mail informado é inválido."
+            );
+        }
+    }
+
+    // =====================================================
+    // VALIDAR SENHA
+    // =====================================================
+
+    private void validarSenha(String senha) {
+
+        if (senha == null || senha.length() < 8) {
             throw new IllegalArgumentException(
                     "A senha deve ter pelo menos 8 caracteres."
             );
         }
-
-        if (!"ADMIN".equals(dto.tpPerfil())
-                && !"ATENDENTE".equals(dto.tpPerfil())) {
-
-            throw new IllegalArgumentException(
-                    "Perfil deve ser ADMIN ou ATENDENTE."
-            );
-        }
     }
 
-    // VALIDAR DADOS DA ATUALIZAÇÃO
-    private void validarDadosAtualizacao(FuncionarioUpdateDTO dto) {
-
-        if (dto.nmFuncionario() == null
-                || dto.nmFuncionario().isBlank()) {
-
-            throw new IllegalArgumentException(
-                    "Nome é obrigatório."
-            );
-        }
-
-        if (dto.dsEmailLogin() == null
-                || dto.dsEmailLogin().isBlank()) {
-
-            throw new IllegalArgumentException(
-                    "E-mail de login é obrigatório."
-            );
-        }
-
-        if (!"ADMIN".equals(dto.tpPerfil())
-                && !"ATENDENTE".equals(dto.tpPerfil())) {
-
-            throw new IllegalArgumentException(
-                    "Perfil deve ser ADMIN ou ATENDENTE."
-            );
-        }
-    }
-
-    // VALIDAR TREINAMENTO
-    private void validarTreinamento(String flTreinado) {
-
-        if (!"S".equals(flTreinado)
-                && !"N".equals(flTreinado)) {
-
-            throw new IllegalArgumentException(
-                    "Treinamento deve ser S ou N."
-            );
-        }
-    }
-
+    // =====================================================
     // VALIDAR ID
+    // =====================================================
+
     private void validarId(Long id) {
 
         if (id == null || id <= 0) {
@@ -516,90 +750,16 @@ public class FuncionarioService {
         }
     }
 
+    // =====================================================
+    // VALIDAR RESULTADO DO DAO
+    // =====================================================
 
-    // IDENTIFICAR ADMIN AUTENTICADO PELO E-MAIL
-    public Long buscarIdAdminAutenticado(String email) {
+    private void validarLinhasAfetadas(
+            int linhasAfetadas,
+            String mensagem) {
 
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Identificação do funcionário não informada."
-            );
-        }
-
-        Funcionario admin = funcionarioDAO.buscarPorEmailLogin(
-                email.trim().toLowerCase()
-        ).orElseThrow(() ->
-                new IllegalArgumentException(
-                        "Funcionário não encontrado."
-                )
-        );
-
-        validarFuncionarioAtivo(admin);
-
-        if (!"ADMIN".equals(admin.getTpPerfil())) {
-            throw new IllegalArgumentException(
-                    "Acesso permitido somente para ADMIN."
-            );
-        }
-
-        return admin.getCdFuncionario();
-    }
-
-    // VALIDAR SE O ADMIN PERTENCE AO ESTABELECIMENTO
-    public void validarAcessoAdminEstabelecimento(
-            String email,
-            Long cdEstabelecimento) {
-
-        validarId(cdEstabelecimento);
-
-        // IDENTIFICAR ADMIN PELO E-MAIL AUTENTICADO
-        Long cdFuncionarioAdmin =
-                buscarIdAdminAutenticado(email);
-
-        Funcionario admin = funcionarioDAO.buscarPorId(
-                cdFuncionarioAdmin
-        ).orElseThrow(() ->
-                new IllegalArgumentException(
-                        "Funcionário administrador não encontrado."
-                )
-        );
-
-        // CONFERIR VÍNCULO COM A EMPRESA
-        if (!admin.getCdEstabelecimento()
-                .equals(cdEstabelecimento)) {
-
-            throw new IllegalArgumentException(
-                    "Você não possui acesso a este estabelecimento."
-            );
+        if (linhasAfetadas != 1) {
+            throw new IllegalStateException(mensagem);
         }
     }
-
-
-    // IDENTIFICAR FUNCIONÁRIO AUTENTICADO PELO E-MAIL
-    // Permite ADMIN e ATENDENTE, desde que estejam ativos.
-    public Long buscarIdFuncionarioAutenticado(String email) {
-
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Identificação do funcionário não informada."
-            );
-        }
-
-        Funcionario funcionario =
-                funcionarioDAO.buscarPorEmailLogin(
-                        email.trim().toLowerCase()
-                ).orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Funcionário não encontrado."
-                        )
-                );
-
-        validarFuncionarioAtivo(funcionario);
-
-        return funcionario.getCdFuncionario();
-    }
-
-
-
-
 }

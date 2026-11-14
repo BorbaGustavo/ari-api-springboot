@@ -166,26 +166,20 @@ public class FuncionarioDAO implements CrudDAO<Funcionario, Long> {
     public int atualizar(Funcionario funcionario) {
 
         String sql = """
-                UPDATE T_ARI_FUNCIONARIO
-                SET
-                    NM_FUNCIONARIO = ?,
-                    NR_TELEFONE = ?,
-                    DS_EMAIL_LOGIN = ?,
-                    TP_PERFIL = ?,
-                    FL_TREINADO = ?,
-                    ST_FUNCIONARIO = ?
-                WHERE CD_FUNCIONARIO = ?
-                  AND CD_ESTABELECIMENTO = ?
-                """;
+            UPDATE T_ARI_FUNCIONARIO
+            SET
+                NM_FUNCIONARIO = ?,
+                NR_TELEFONE = ?,
+                DS_EMAIL_LOGIN = ?
+            WHERE CD_FUNCIONARIO = ?
+              AND CD_ESTABELECIMENTO = ?
+            """;
 
         return jdbcTemplate.update(
                 sql,
                 funcionario.getNmFuncionario(),
                 funcionario.getNrTelefone(),
                 funcionario.getDsEmailLogin(),
-                funcionario.getTpPerfil(),
-                funcionario.getFlTreinado(),
-                funcionario.getStFuncionario(),
                 funcionario.getCdFuncionario(),
                 funcionario.getCdEstabelecimento()
         );
