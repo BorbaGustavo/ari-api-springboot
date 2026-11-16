@@ -116,30 +116,33 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
             DT_CADASTRO
             """;
 
+
     // CADASTRAR ESTABELECIMENTO
     @Override
     public int criar(Estabelecimento estabelecimento) {
 
         String sql = """
-                INSERT INTO T_ARI_ESTABELECIMENTO (
-                    NR_CNPJ,
-                    NM_RAZAO_SOCIAL,
-                    NM_FANTASIA,
-                    NM_EMPRESA,
-                    DS_EMAIL,
-                    NR_TELEFONE,
-                    DS_TIPO_ESTABELECIMENTO,
-                    NR_CEP,
-                    DS_LOGRADOURO,
-                    NR_ENDERECO,
-                    DS_COMPLEMENTO,
-                    NM_BAIRRO,
-                    NM_CIDADE,
-                    SG_UF,
-                    NR_LATITUDE,
-                    NR_LONGITUDE
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+            INSERT INTO T_ARI_ESTABELECIMENTO (
+                NR_CNPJ,
+                NM_RAZAO_SOCIAL,
+                NM_FANTASIA,
+                NM_EMPRESA,
+                DS_EMAIL,
+                NR_TELEFONE,
+                DS_TIPO_ESTABELECIMENTO,
+                NR_CEP,
+                DS_LOGRADOURO,
+                NR_ENDERECO,
+                DS_COMPLEMENTO,
+                NM_BAIRRO,
+                NM_CIDADE,
+                SG_UF,
+                NR_LATITUDE,
+                NR_LONGITUDE,
+                FL_ACOLHIMENTO_ATIVO,
+                ST_ESTABELECIMENTO
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
 
         return jdbcTemplate.update(
                 sql,
@@ -158,9 +161,12 @@ public class EstabelecimentoDAO implements CrudDAO<Estabelecimento, Long> {
                 estabelecimento.getNmCidade(),
                 estabelecimento.getSgUf(),
                 estabelecimento.getNrLatitude(),
-                estabelecimento.getNrLongitude()
+                estabelecimento.getNrLongitude(),
+                estabelecimento.getFlAcolhimentoAtivo(),
+                estabelecimento.getStEstabelecimento()
         );
     }
+
 
     // BUSCAR ESTABELECIMENTO POR ID
     @Override

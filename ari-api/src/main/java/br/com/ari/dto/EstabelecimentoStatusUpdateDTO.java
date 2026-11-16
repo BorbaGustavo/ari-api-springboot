@@ -12,11 +12,11 @@ public record EstabelecimentoStatusUpdateDTO(
         @NotBlank(message = "Informe o status do estabelecimento.")
         @Pattern(
                 regexp = "PENDENTE|ATIVO|SUSPENSO|REPROVADO",
-                message = "Status inválido. Utilize PENDENTE, ATIVO, SUSPENSO ou REPROVADO."
+                message = "Status inválido. Selecione um dos status permitidos: PENDENTE, ATIVO, SUSPENSO ou REPROVADO."
         )
         @Schema(
-                description = "Novo status do estabelecimento.",
-                example = "SUSPENSO",
+                description = "Informe somente um dos status permitidos para o estabelecimento.",
+                example = "ATIVO",
                 allowableValues = {
                         "PENDENTE",
                         "ATIVO",

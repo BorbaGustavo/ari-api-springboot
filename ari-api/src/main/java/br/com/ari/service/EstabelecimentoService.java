@@ -783,8 +783,8 @@ public class EstabelecimentoService {
                 .nrLatitude(dto.nrLatitude())
                 .nrLongitude(dto.nrLongitude())
 
-                // O SQL define PENDENTE e N como valores padrão.
-                .stEstabelecimento("PENDENTE")
+                // NOVO CADASTRO: ativo, mas sem acolhimento habilitado.
+                .stEstabelecimento("ATIVO")
                 .flAcolhimentoAtivo("N")
 
                 .build();
