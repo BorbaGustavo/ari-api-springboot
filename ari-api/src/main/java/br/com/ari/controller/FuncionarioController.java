@@ -16,6 +16,9 @@ import br.com.ari.service.FuncionarioService;
 import br.com.ari.service.FuncionarioSessaoService;
 import br.com.ari.service.FuncionarioSessaoService.Sessao;
 
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -29,6 +32,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/funcionarios")
@@ -146,14 +150,14 @@ public class FuncionarioController {
     }
 
     // =====================================================
-    // ATUALIZAR PRÓPRIO PERFIL
-    // ADMIN E ATENDENTE
-    // =====================================================
+// ATUALIZAR DADOS DO FUNCIONÁRIO
+// ADMIN E ATENDENTE
+// =====================================================
 
-    @PutMapping("/me")
+    @PutMapping("/{id}")
     @Operation(
-            summary = "Atualizar próprio perfil",
-            description = "Permite atualizar nome, telefone e e-mail do próprio funcionário."
+            summary = "Atualizar dados do funcionário",
+            description = "ADMIN pode atualizar seus próprios dados ou os de funcionários do estabelecimento. ATENDENTE pode atualizar somente os próprios dados."
     )
     @Parameter(
             name = HEADER_SESSAO,
@@ -161,30 +165,35 @@ public class FuncionarioController {
             required = true,
             description = "UUID da sessão autenticada."
     )
-    public ResponseEntity<Void> atualizarMeuPerfil(
+    public ResponseEntity<Void> atualizar(
             Principal principal,
+            @PathVariable Long id,
             @RequestHeader(HEADER_SESSAO) String uuid,
             @Valid @RequestBody FuncionarioUpdateDTO dto) {
 
-        Long cdFuncionario = obterFuncionarioId(principal);
+        Long cdFuncionarioAutenticado = obterFuncionarioId(principal);
 
-        // Atualiza somente os dados pessoais.
+        // Atualiza os dados conforme as permissões do funcionário.
         funcionarioService.atualizar(
-                cdFuncionario,
+                cdFuncionarioAutenticado,
+                id,
                 dto
         );
 
-        // Recupera os dados atualizados no banco.
-        FuncionarioResponseDTO funcionarioAtualizado =
-                funcionarioService.buscarFuncionarioAutenticado(
-                        cdFuncionario
-                );
+        // Sincroniza a sessão somente quando o funcionário
+        // estiver atualizando os próprios dados.
+        if (id.equals(cdFuncionarioAutenticado)) {
 
-        // Sincroniza os dados da sessão sem renovar sua expiração.
-        funcionarioSessaoService.atualizarDados(
-                uuid.trim(),
-                funcionarioAtualizado
-        );
+            FuncionarioResponseDTO funcionarioAtualizado =
+                    funcionarioService.buscarFuncionarioAutenticado(
+                            cdFuncionarioAutenticado
+                    );
+
+            funcionarioSessaoService.atualizarDados(
+                    uuid.trim(),
+                    funcionarioAtualizado
+            );
+        }
 
         return ResponseEntity.noContent().build();
     }
@@ -240,12 +249,44 @@ public class FuncionarioController {
     // ADMIN
     // =====================================================
 
+    //Precisei fazer essa gambiarra pq já fiz a doc não queria criar outro DTO
+    //SIM eu sei que ta errado mas, quebra meu galho ai.
     @PatchMapping("/{id}/status")
+    @Operation(
+            summary = "Ativar ou inativar funcionário",
+            description = "Permite ao ADMIN ativar ou inativar funcionários do próprio estabelecimento."
+    )
+    @Parameter(
+            name = HEADER_SESSAO,
+            in = ParameterIn.HEADER,
+            required = true,
+            description = "UUID retornado no login do administrador."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Informe o status desejado do funcionário.",
+            required = true,
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(
+                            example = "{\"stFuncionario\":\"INATIVO\"}"
+                    ),
+                    examples = {
+                            @ExampleObject(
+                                    name = "Inativar funcionário",
+                                    value = "{\"stFuncionario\":\"INATIVO\"}"
+                            ),
+                            @ExampleObject(
+                                    name = "Ativar funcionário",
+                                    value = "{\"stFuncionario\":\"ATIVO\"}"
+                            )
+                    }
+            )
+    )
     public ResponseEntity<Void> atualizarStatus(
             Principal principal,
             @PathVariable Long id,
-            // precisei fazer uma gambiarra de última hora
-            @RequestBody java.util.Map<String, String> dados) {
+            @RequestHeader(HEADER_SESSAO) String uuid,
+            @RequestBody Map<String, String> dados) {
 
         if (dados == null || dados.get("stFuncionario") == null) {
             throw new IllegalArgumentException(
@@ -261,6 +302,7 @@ public class FuncionarioController {
 
         return ResponseEntity.noContent().build();
     }
+
 
     // =====================================================
     // EXCLUIR FUNCIONÁRIO

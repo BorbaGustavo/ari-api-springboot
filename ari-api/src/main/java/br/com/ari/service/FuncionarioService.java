@@ -235,11 +235,21 @@ public class FuncionarioService {
     @Transactional
     public int atualizar(
             Long cdFuncionarioAutenticado,
+            Long cdFuncionarioAlvo,
             FuncionarioUpdateDTO dto) {
 
         Funcionario solicitante = buscarFuncionarioAtivo(
                 cdFuncionarioAutenticado
         );
+
+        // Somente ADMIN e ATENDENTE podem editar dados.
+        if (!PERFIL_ADMIN.equals(solicitante.getTpPerfil())
+                && !PERFIL_ATENDENTE.equals(solicitante.getTpPerfil())) {
+
+            throw new IllegalArgumentException(
+                    "Perfil sem permissão para editar dados de funcionários."
+            );
+        }
 
         if (dto == null) {
             throw new IllegalArgumentException(
