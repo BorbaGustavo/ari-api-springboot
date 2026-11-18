@@ -127,7 +127,7 @@ public class CondicaoApoioService {
     }
 
     // LISTAR CONDIÇÕES ATIVAS DA EMPRESA
-    public List<CondicaoApoioResponseDTO> buscarAtivas(
+    public List<CondicaoApoioResponseDTO> buscarAtivasPorEstabelecimento(
             Long cdFuncionarioAdmin) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
@@ -138,6 +138,17 @@ public class CondicaoApoioService {
                 .map(this::converterParaResponse)
                 .toList();
     }
+
+    // LISTAR CONDIÇÕES ATIVAS DE TODOS OS ESTABELECIMENTOS
+    // Consulta pública utilizada pelo Explore.
+    public List<CondicaoApoioResponseDTO> buscarAtivas() {
+
+        return condicaoApoioDAO.buscarAtivas()
+                .stream()
+                .map(this::converterParaResponse)
+                .toList();
+    }
+
 
     // CONSULTA PÚBLICA DAS CONDIÇÕES DE APOIO
     // Utilizada pelo Front-end para apresentar os apoios oferecidos.

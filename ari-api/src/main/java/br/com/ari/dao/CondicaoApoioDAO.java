@@ -167,6 +167,19 @@ public class CondicaoApoioDAO
         );
     }
 
+    // BUSCAR TODAS AS CONDIÇÕES ATIVAS DE TODOS OS ESTABELECIMENTOS
+    public List<CondicaoApoio> buscarAtivas() {
+
+        String sql = """
+            SELECT %s
+            FROM T_ARI_CONDICAO_APOIO
+            WHERE FL_ATIVO = 'S'
+            ORDER BY CD_ESTABELECIMENTO, NM_CONDICAO
+            """.formatted(COLUNAS);
+
+        return jdbcTemplate.query(sql, mapper);
+    }
+
     // ATUALIZAR CONDIÇÃO DE APOIO
     // Restringe a alteração à condição pertencente ao estabelecimento.
     @Override

@@ -119,7 +119,8 @@ public class DisponibilidadeService {
     }
 
     // LISTAR SOMENTE OS PERÍODOS ATIVOS
-    public List<DisponibilidadeResponseDTO> buscarAtivas(
+    // LISTAR SOMENTE OS PERÍODOS ATIVOS DO ESTABELECIMENTO
+    public List<DisponibilidadeResponseDTO> buscarAtivasPorEstabelecimento(
             Long cdFuncionarioAdmin) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
@@ -127,6 +128,16 @@ public class DisponibilidadeService {
         return disponibilidadeDAO.buscarAtivasPorEstabelecimento(
                         admin.getCdEstabelecimento()
                 ).stream()
+                .map(this::converterParaResponse)
+                .toList();
+    }
+
+    // LISTAR TODOS OS PERÍODOS ATIVOS DE TODOS OS ESTABELECIMENTOS
+// Consulta pública utilizada pelo Explore.
+    public List<DisponibilidadeResponseDTO> buscarAtivas() {
+
+        return disponibilidadeDAO.buscarAtivas()
+                .stream()
                 .map(this::converterParaResponse)
                 .toList();
     }

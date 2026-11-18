@@ -72,6 +72,13 @@ public class SecurityConfig {
                                 "/api/funcionarios/login"
                         ).permitAll()
 
+                        // Rotas públicas utilizadas pelos filtros do Explore.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/condicoes-apoio/ativas",
+                                "/api/disponibilidades/ativas"
+                        ).permitAll()
+
                         // Demais rotas de funcionários exigem autenticação.
                         .requestMatchers(
                                 "/api/funcionarios",

@@ -189,6 +189,20 @@ public class DisponibilidadeDAO
         );
     }
 
+
+    // BUSCAR TODOS OS PERÍODOS ATIVOS DE TODOS OS ESTABELECIMENTOS
+    public List<Disponibilidade> buscarAtivas() {
+
+        String sql = """
+            SELECT %s
+            FROM T_ARI_DISPONIBILIDADE
+            WHERE FL_ATIVO = 'S'
+            ORDER BY CD_ESTABELECIMENTO, NR_DIA_SEMANA, NR_PERIODO
+            """.formatted(COLUNAS);
+
+        return jdbcTemplate.query(sql, mapper);
+    }
+
     // BUSCAR DISPONIBILIDADES POR DIA DA SEMANA
     public List<Disponibilidade> buscarPorDiaSemana(
             Long cdEstabelecimento,

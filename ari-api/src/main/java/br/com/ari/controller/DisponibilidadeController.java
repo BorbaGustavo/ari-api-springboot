@@ -63,12 +63,14 @@ public class DisponibilidadeController {
     // =====================================================
 
     @GetMapping("/ativas")
-    @Operation(summary = "Listar disponibilidades ativas", description = "Retorna somente os períodos ativos do estabelecimento do administrador.")
-    public ResponseEntity<List<DisponibilidadeResponseDTO>> buscarAtivas(
-            Principal principal) {
+    @Operation(
+            summary = "Listar disponibilidades ativas",
+            description = "Retorna todos os períodos ativos de todos os estabelecimentos."
+    )
+    public ResponseEntity<List<DisponibilidadeResponseDTO>> buscarAtivas() {
 
         return ResponseEntity.ok(
-                disponibilidadeService.buscarAtivas(obterAdminId(principal))
+                disponibilidadeService.buscarAtivas()
         );
     }
 

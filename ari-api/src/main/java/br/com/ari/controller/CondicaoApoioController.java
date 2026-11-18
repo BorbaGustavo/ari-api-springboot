@@ -87,12 +87,14 @@ public class CondicaoApoioController {
     // =====================================================
 
     @GetMapping("/ativas")
-    @Operation(summary = "Listar condições ativas", description = "Lista somente as condições ativas do estabelecimento do administrador.")
-    public ResponseEntity<List<CondicaoApoioResponseDTO>> buscarAtivas(
-            Principal principal) {
+    @Operation(
+            summary = "Listar condições ativas",
+            description = "Lista todas as condições de apoio ativas de todos os estabelecimentos."
+    )
+    public ResponseEntity<List<CondicaoApoioResponseDTO>> buscarAtivas() {
 
         return ResponseEntity.ok(
-                condicaoApoioService.buscarAtivas(obterAdminId(principal))
+                condicaoApoioService.buscarAtivas()
         );
     }
 
