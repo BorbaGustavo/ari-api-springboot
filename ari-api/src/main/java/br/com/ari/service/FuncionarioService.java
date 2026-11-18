@@ -215,12 +215,21 @@ public class FuncionarioService {
     }
 
     // =====================================================
-    // ATUALIZAR OS PRÓPRIOS DADOS
-    // ADMIN e ATENDENTE podem atualizar:
-    // nome, telefone e e-mail.
+    // ATUALIZAR DADOS DO FUNCIONÁRIO
+    //
+    // ADMIN:
+    // - Pode atualizar os próprios dados.
+    // - Pode atualizar outros funcionários do estabelecimento.
+    //
+    // ATENDENTE:
+    // - Pode atualizar somente os próprios dados.
+    //
+    // Nenhum funcionário pode editar alguém de outro
+    // estabelecimento.
     //
     // Não altera perfil, treinamento, status ou senha.
-    // O ID vem da autenticação, não do corpo da requisição.
+    // O ID do solicitante vem da autenticação.
+    // O ID do alvo vem da rota.
     // =====================================================
 
     @Transactional
@@ -228,7 +237,7 @@ public class FuncionarioService {
             Long cdFuncionarioAutenticado,
             FuncionarioUpdateDTO dto) {
 
-        Funcionario existente = buscarFuncionarioAtivo(
+        Funcionario solicitante = buscarFuncionarioAtivo(
                 cdFuncionarioAutenticado
         );
 
@@ -238,6 +247,32 @@ public class FuncionarioService {
             );
         }
 
+        validarId(cdFuncionarioAlvo);
+
+        // O alvo precisa pertencer ao estabelecimento
+        // do funcionário autenticado.
+        Funcionario funcionarioAlvo = buscarFuncionarioDaEmpresa(
+                cdFuncionarioAlvo,
+                solicitante.getCdEstabelecimento()
+        );
+
+        boolean editandoPropriosDados = Objects.equals(
+                solicitante.getCdFuncionario(),
+                funcionarioAlvo.getCdFuncionario()
+        );
+
+        // ATENDENTE só pode editar a própria conta.
+        if (PERFIL_ATENDENTE.equals(solicitante.getTpPerfil())
+                && !editandoPropriosDados) {
+
+            throw new IllegalArgumentException(
+                    "Atendentes podem editar somente os próprios dados."
+            );
+        }
+
+        // ADMIN e ATENDENTE precisam estar ativos.
+        // O alvo pode estar INATIVO, pois a regra permite
+        // ao ADMIN editar funcionários do estabelecimento.
         validarNome(dto.nmFuncionario());
         validarEmail(dto.dsEmailLogin());
 
@@ -245,20 +280,20 @@ public class FuncionarioService {
 
         validarEmailDisponivel(
                 email,
-                cdFuncionarioAutenticado
+                cdFuncionarioAlvo
         );
 
         Funcionario funcionario = Funcionario.builder()
-                .cdFuncionario(existente.getCdFuncionario())
-                .cdEstabelecimento(existente.getCdEstabelecimento())
+                .cdFuncionario(funcionarioAlvo.getCdFuncionario())
+                .cdEstabelecimento(funcionarioAlvo.getCdEstabelecimento())
                 .nmFuncionario(dto.nmFuncionario().trim())
                 .nrTelefone(normalizarTelefone(dto.nrTelefone()))
                 .dsEmailLogin(email)
-                .dsSenhaHash(existente.getDsSenhaHash())
-                .tpPerfil(existente.getTpPerfil())
-                .flTreinado(existente.getFlTreinado())
-                .stFuncionario(existente.getStFuncionario())
-                .dtCadastro(existente.getDtCadastro())
+                .dsSenhaHash(funcionarioAlvo.getDsSenhaHash())
+                .tpPerfil(funcionarioAlvo.getTpPerfil())
+                .flTreinado(funcionarioAlvo.getFlTreinado())
+                .stFuncionario(funcionarioAlvo.getStFuncionario())
+                .dtCadastro(funcionarioAlvo.getDtCadastro())
                 .build();
 
         try {
@@ -363,52 +398,84 @@ public class FuncionarioService {
     }
 
     // =====================================================
-    // INATIVAR FUNCIONÁRIO
+    // ATUALIZAR STATUS DO FUNCIONÁRIO
+    //
     // Somente ADMIN do mesmo estabelecimento.
-    // Não permite inativar a própria conta.
-    // Encerra todas as sessões do funcionário.
+    // Aceita ATIVO ou INATIVO.
+    // Não permite alterar o próprio status.
+    //
+    // Ao INATIVAR:
+    // - Atualiza o status no banco.
+    // - Encerra todas as sessões do funcionário.
+    //
+    // Ao ATIVAR:
+    // - Atualiza o status no banco.
+    // - Não cria sessão automaticamente.
     // =====================================================
 
     @Transactional
-    public int inativar(
+    public int atualizarStatus(
             Long cdFuncionarioAdmin,
-            Long cdFuncionarioAlvo) {
+            Long cdFuncionarioAlvo,
+            String stFuncionario) {
 
         Funcionario admin = buscarAdmin(cdFuncionarioAdmin);
+
+        if (!STATUS_ATIVO.equals(stFuncionario)
+                && !STATUS_INATIVO.equals(stFuncionario)) {
+
+            throw new IllegalArgumentException(
+                    "Informe ATIVO ou INATIVO para o status do funcionário."
+            );
+        }
 
         Funcionario funcionario = buscarFuncionarioDaEmpresa(
                 cdFuncionarioAlvo,
                 admin.getCdEstabelecimento()
         );
 
+        // O ADMIN não pode alterar o próprio status.
         if (Objects.equals(
                 funcionario.getCdFuncionario(),
                 admin.getCdFuncionario())) {
 
             throw new IllegalArgumentException(
-                    "O administrador não pode inativar a própria conta por esta operação."
+                    "O administrador não pode alterar o próprio status."
             );
         }
 
-        if (STATUS_INATIVO.equals(funcionario.getStFuncionario())) {
+        // Impede operações repetidas sem necessidade.
+        if (stFuncionario.equals(funcionario.getStFuncionario())) {
+
+            if (STATUS_ATIVO.equals(stFuncionario)) {
+                throw new IllegalStateException(
+                        "Este funcionário já está ativo."
+                );
+            }
+
             throw new IllegalStateException(
                     "Este funcionário já está inativo."
             );
         }
 
-        int linhasAfetadas = funcionarioDAO.inativar(
-                cdFuncionarioAlvo,
-                admin.getCdEstabelecimento()
+        int linhasAfetadas = funcionarioDAO.atualizarStatus(
+                funcionario.getCdFuncionario(),
+                admin.getCdEstabelecimento(),
+                stFuncionario
         );
 
         validarLinhasAfetadas(
                 linhasAfetadas,
-                "Não foi possível inativar o funcionário."
+                "Não foi possível atualizar o status do funcionário."
         );
 
-        funcionarioSessaoService.encerrarTodasDoFuncionario(
-                cdFuncionarioAlvo
-        );
+        // Ao inativar, encerra todas as sessões existentes.
+        // A reativação não cria uma nova sessão.
+        if (STATUS_INATIVO.equals(stFuncionario)) {
+            funcionarioSessaoService.encerrarTodasDoFuncionario(
+                    funcionario.getCdFuncionario()
+            );
+        }
 
         return linhasAfetadas;
     }

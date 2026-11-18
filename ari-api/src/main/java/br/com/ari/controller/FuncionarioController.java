@@ -240,18 +240,23 @@ public class FuncionarioController {
     // ADMIN
     // =====================================================
 
-    @PatchMapping("/{id}/inativar")
-    @Operation(
-            summary = "Inativar funcionário",
-            description = "Inativa outro funcionário do estabelecimento e encerra suas sessões ativas."
-    )
-    public ResponseEntity<Void> inativar(
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Void> atualizarStatus(
             Principal principal,
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            // precisei fazer uma gambiarra de última hora
+            @RequestBody java.util.Map<String, String> dados) {
 
-        funcionarioService.inativar(
+        if (dados == null || dados.get("stFuncionario") == null) {
+            throw new IllegalArgumentException(
+                    "O status do funcionário é obrigatório."
+            );
+        }
+
+        funcionarioService.atualizarStatus(
                 obterAdminId(principal),
-                id
+                id,
+                dados.get("stFuncionario")
         );
 
         return ResponseEntity.noContent().build();
