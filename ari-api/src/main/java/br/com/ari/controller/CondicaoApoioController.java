@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.security.Principal;
@@ -51,7 +52,7 @@ public class CondicaoApoioController {
             description = "Retorna somente as condições ativas de um estabelecimento."
     )
     public ResponseEntity<List<CondicaoApoioResponseDTO>>
-    buscarAtivasPublicas(@PathVariable Long id) {
+    buscarAtivasPublicas(@Parameter(name = "id", description = "Identificador do estabelecimento.", example = "1", required = true) @PathVariable Long id) {
 
         List<CondicaoApoioResponseDTO> condicoes =
                 condicaoApoioService.buscarAtivasPublicas(id);
@@ -106,6 +107,7 @@ public class CondicaoApoioController {
     @Operation(summary = "Buscar condição por ID", description = "Consulta uma condição pertencente ao estabelecimento do administrador.")
     public ResponseEntity<CondicaoApoioResponseDTO> buscarPorId(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador da condicao de apoio.", example = "1", required = true)
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
@@ -150,6 +152,7 @@ public class CondicaoApoioController {
     )
     public ResponseEntity<CondicaoApoioResponseDTO> atualizar(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador da condicao de apoio.", example = "1", required = true)
             @PathVariable Long id,
             @Valid @RequestBody CondicaoApoioUpdateDTO dto) {
 
@@ -173,6 +176,7 @@ public class CondicaoApoioController {
     @Operation(summary = "Desativar condição", description = "Desativa uma condição sem excluir seu histórico.")
     public ResponseEntity<Void> desativar(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador da condicao de apoio.", example = "1", required = true)
             @PathVariable Long id) {
 
         condicaoApoioService.desativar(obterAdminId(principal), id);
@@ -187,6 +191,7 @@ public class CondicaoApoioController {
     @Operation(summary = "Ativar condição", description = "Reativa uma condição previamente desativada, respeitando a regra de nome único.")
     public ResponseEntity<Void> ativar(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador da condicao de apoio.", example = "1", required = true)
             @PathVariable Long id) {
 
         condicaoApoioService.ativar(obterAdminId(principal), id);

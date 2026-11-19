@@ -99,6 +99,7 @@ public class AvisoAcolhimentoController {
     @GetMapping("/me/historico")
     @Operation(summary = "Consultar histórico de avisos", description = "Retorna o histórico de avisos da usuária autenticada.")
     public ResponseEntity<List<AvisoAcolhimentoResponseDTO>> buscarHistoricoUsuario(
+            @Parameter(description = "UUID da sessao da usuaria.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER, required = true)
             @RequestHeader("X-Session-UUID") String uuid) {
 
         return ResponseEntity.ok(avisoAcolhimentoService.buscarPorUsuario(uuid));
@@ -111,7 +112,9 @@ public class AvisoAcolhimentoController {
     @GetMapping("/me/{id}")
     @Operation(summary = "Consultar aviso da usuária", description = "Retorna um aviso somente quando ele pertence à usuária autenticada.")
     public ResponseEntity<AvisoAcolhimentoResponseDTO> buscarPorIdParaUsuario(
+            @Parameter(description = "UUID da sessao da usuaria.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER, required = true)
             @RequestHeader("X-Session-UUID") String uuid,
+            @Parameter(name = "id", description = "Identificador do aviso.", example = "1", required = true)
             @PathVariable Long id) {
 
         return ResponseEntity.ok(

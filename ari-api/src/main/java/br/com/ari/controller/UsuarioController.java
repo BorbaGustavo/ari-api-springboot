@@ -109,6 +109,7 @@ public class UsuarioController {
             description = "Atualiza os dados cadastrais da usuária autenticada."
     )
     public ResponseEntity<Void> atualizarMeuPerfil(
+            @Parameter(description = "UUID da sessao autenticada.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER, required = true)
             @RequestHeader("X-Session-UUID") String uuid,
             @Valid @RequestBody UsuarioUpdateDTO dto) {
 
@@ -127,6 +128,7 @@ public class UsuarioController {
             description = "Atualiza a senha da usuária autenticada."
     )
     public ResponseEntity<Void> atualizarMinhaSenha(
+            @Parameter(description = "UUID da sessao autenticada.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER, required = true)
             @RequestHeader("X-Session-UUID") String uuid,
             @Valid @RequestBody UsuarioSenhaUpdateDTO dto) {
 
@@ -145,6 +147,7 @@ public class UsuarioController {
             description = "Realiza o bloqueio lógico da conta e revoga suas sessões ativas."
     )
     public ResponseEntity<Void> excluirMinhaConta(
+            @Parameter(description = "UUID da sessao autenticada.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER, required = true)
             @RequestHeader("X-Session-UUID") String uuid) {
 
         usuarioService.excluirMinhaConta(uuid);
@@ -162,6 +165,7 @@ public class UsuarioController {
             description = "Revoga a sessão identificada pelo UUID enviado no header."
     )
     public ResponseEntity<Void> sair(
+            @Parameter(description = "UUID da sessao autenticada.", example = "550e8400-e29b-41d4-a716-446655440000", in = ParameterIn.HEADER, required = true)
             @RequestHeader("X-Session-UUID") String uuid) {
 
         usuarioService.encerrarSessao(uuid);

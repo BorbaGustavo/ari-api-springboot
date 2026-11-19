@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.security.Principal;
@@ -82,6 +83,7 @@ public class DisponibilidadeController {
     @Operation(summary = "Listar disponibilidades por dia", description = "Retorna os períodos ativos de um dia da semana (1 a 7).")
     public ResponseEntity<List<DisponibilidadeResponseDTO>> buscarPorDiaSemana(
             Principal principal,
+            @Parameter(name = "dia", description = "Dia da semana: 1=segunda-feira ate 7=domingo.", example = "1", required = true)
             @PathVariable Integer dia) {
 
         return ResponseEntity.ok(
@@ -99,6 +101,7 @@ public class DisponibilidadeController {
     @Operation(summary = "Buscar disponibilidade", description = "Consulta um período pertencente ao estabelecimento do administrador.")
     public ResponseEntity<DisponibilidadeResponseDTO> buscarPorId(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador da disponibilidade.", example = "1", required = true)
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
@@ -137,6 +140,7 @@ public class DisponibilidadeController {
     @Operation(summary = "Atualizar disponibilidade", description = "Atualiza dia, período e horários de uma disponibilidade.")
     public ResponseEntity<DisponibilidadeResponseDTO> atualizar(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador da disponibilidade.", example = "1", required = true)
             @PathVariable Long id,
             @Valid @RequestBody DisponibilidadeUpdateDTO dto) {
 
@@ -160,6 +164,7 @@ public class DisponibilidadeController {
     @Operation(summary = "Ativar ou desativar disponibilidade", description = "Use flAtivo=S para ativar ou flAtivo=N para desativar.")
     public ResponseEntity<Void> atualizarStatus(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador da disponibilidade.", example = "1", required = true)
             @PathVariable Long id,
             @Valid @RequestBody DisponibilidadeStatusDTO dto) {
 

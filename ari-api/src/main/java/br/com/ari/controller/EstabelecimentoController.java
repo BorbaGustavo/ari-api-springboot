@@ -76,6 +76,7 @@ public class EstabelecimentoController {
     )
     public ResponseEntity<Void> atualizar(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador do estabelecimento.", example = "1", required = true)
             @PathVariable Long id,
             @Valid @RequestBody EstabelecimentoUpdateDTO dto) {
 
@@ -98,6 +99,7 @@ public class EstabelecimentoController {
     )
     public ResponseEntity<Void> excluir(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador do estabelecimento.", example = "1", required = true)
             @PathVariable Long id) {
 
         validarAdmin(principal, id);
@@ -151,6 +153,7 @@ public class EstabelecimentoController {
     @GetMapping("/cep/{cep}")
     @Operation(summary = "Buscar estabelecimentos por CEP", description = "Retorna estabelecimentos ativos, com acolhimento habilitado e sem suspensão vigente no CEP informado.")
     public ResponseEntity<List<EstabelecimentoResponseDTO>> buscarPorCep(
+            @Parameter(name = "cep", description = "CEP do estabelecimento, somente numeros.", example = "01310100", required = true)
             @PathVariable String cep) {
 
         List<EstabelecimentoResponseDTO> estabelecimentos =
@@ -172,6 +175,7 @@ public class EstabelecimentoController {
             description = "Consulta um estabelecimento ativo pelo identificador."
     )
     public ResponseEntity<EstabelecimentoResponseDTO> buscarPorId(
+            @Parameter(name = "id", description = "Identificador do estabelecimento.", example = "1", required = true)
             @PathVariable Long id) {
 
         Estabelecimento estabelecimento = estabelecimentoService
@@ -195,6 +199,7 @@ public class EstabelecimentoController {
     )
     public ResponseEntity<Void> atualizarAcolhimento(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador do estabelecimento.", example = "1", required = true)
             @PathVariable Long id,
             @Valid @RequestBody EstabelecimentoAcolhimentoUpdateDTO dto) {
 
@@ -217,6 +222,7 @@ public class EstabelecimentoController {
     )
     public ResponseEntity<Void> atualizarSuspensao(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador do estabelecimento.", example = "1", required = true)
             @PathVariable Long id,
             @Valid @RequestBody EstabelecimentoSuspensaoDTO dto) {
 
@@ -239,6 +245,7 @@ public class EstabelecimentoController {
     )
     public ResponseEntity<Void> atualizarStatus(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador do estabelecimento.", example = "1", required = true)
             @PathVariable Long id,
             @Valid @RequestBody EstabelecimentoStatusUpdateDTO dto) {
 

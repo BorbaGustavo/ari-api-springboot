@@ -117,6 +117,7 @@ public class FuncionarioController {
     )
     public ResponseEntity<FuncionarioResponseDTO> buscarPorId(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador do funcionario.", example = "1", required = true)
             @PathVariable Long id) {
 
         FuncionarioResponseDTO funcionario =
@@ -167,6 +168,7 @@ public class FuncionarioController {
     )
     public ResponseEntity<Void> atualizar(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador do funcionario.", example = "1", required = true)
             @PathVariable Long id,
             @RequestHeader(HEADER_SESSAO) String uuid,
             @Valid @RequestBody FuncionarioUpdateDTO dto) {
@@ -232,6 +234,7 @@ public class FuncionarioController {
     )
     public ResponseEntity<Void> atualizarTreinamento(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador do funcionario.", example = "1", required = true)
             @PathVariable Long id,
             @Valid @RequestBody FuncionarioTreinamentoDTO dto) {
 
@@ -284,6 +287,7 @@ public class FuncionarioController {
     )
     public ResponseEntity<Void> atualizarStatus(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador do funcionario.", example = "1", required = true)
             @PathVariable Long id,
             @RequestHeader(HEADER_SESSAO) String uuid,
             @RequestBody Map<String, String> dados) {
@@ -316,6 +320,7 @@ public class FuncionarioController {
     )
     public ResponseEntity<Void> excluir(
             Principal principal,
+            @Parameter(name = "id", description = "Identificador do funcionario.", example = "1", required = true)
             @PathVariable Long id) {
 
         funcionarioService.excluir(

@@ -25,7 +25,7 @@ public class BrasilApiController {
     @GetMapping("/cnpj/{cnpj}")
     @Operation(summary = "Consultar CNPJ", description = "Consulta dados de um CNPJ na Brasil API. Informe exatamente 14 dígitos, sem pontuação.")
     public ResponseEntity<BrasilApiCnpjResponse> consultarCnpj(
-            @Parameter(description = "CNPJ com 14 dígitos.", example = "12345678000195")
+            @Parameter(name = "cnpj", description = "CNPJ com 14 digitos, somente numeros.", example = "12345678000195", required = true)
             @PathVariable String cnpj) {
 
         validarNumeros(cnpj, 14, "CNPJ");
@@ -35,7 +35,7 @@ public class BrasilApiController {
     @GetMapping("/cep/{cep}")
     @Operation(summary = "Consultar CEP", description = "Consulta endereço de um CEP na Brasil API. Informe exatamente 8 dígitos, sem pontuação.")
     public ResponseEntity<BrasilApiCepResponse> consultarCep(
-            @Parameter(description = "CEP com 8 dígitos.", example = "01310100")
+            @Parameter(name = "cep", description = "CEP com 8 digitos, somente numeros.", example = "01310100", required = true)
             @PathVariable String cep) {
 
         validarNumeros(cep, 8, "CEP");
