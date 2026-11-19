@@ -11,14 +11,17 @@ public record FuncionarioUpdateDTO(
 
         @NotBlank(message = "Nome é obrigatório.")
         @Size(max = 120, message = "O nome deve ter no máximo 120 caracteres.")
+        @Schema(description = "Nome completo do funcionario.", example = "Carlos Silva", requiredMode = Schema.RequiredMode.REQUIRED)
         String nmFuncionario,
 
         @Size(max = 20, message = "O telefone deve ter no máximo 20 caracteres.")
+        @Schema(description = "Telefone para contato.", example = "11999999999")
         String nrTelefone,
 
         @NotBlank(message = "E-mail de login é obrigatório.")
         @Email(message = "E-mail inválido.")
         @Size(max = 150, message = "O e-mail deve ter no máximo 150 caracteres.")
+        @Schema(description = "E-mail utilizado para login.", example = "carlos@example.com", requiredMode = Schema.RequiredMode.REQUIRED)
         String dsEmailLogin
 
 ) {}
