@@ -28,7 +28,7 @@ Bean Validation, Spring Security e Springdoc OpenAPI.
 ```text
 ORACLE_FIAP_URL
 ORACLE_FIAP_USER
-ORACLE_FIAP_PASSWORD
+ORACLE_FIAP_PASS
 ```
 
 O nome da aplicação é `ari-api`. Sem uma configuração de porta diferente,
@@ -134,7 +134,7 @@ Content-Type: application/json
 ### Usuária
 
 1. Crie a usuária com `POST /api/usuarios`.
-2. Faça login em `POST /api/auth/usuarios/login`.
+2. Faça login em `POST /api/usuarios/login`.
 3. Guarde o campo `dsUuid` retornado.
 4. Envie esse valor em todas as rotas de usuária que exigem sessão:
 
@@ -191,7 +191,7 @@ invalidadas quando a aplicação é reiniciada.
 
 | Método | Rota | Acesso | Resultado |
 |---|---|---|---|
-| `POST` | `/api/auth/usuarios/login` | Público | `200` e `LoginResponseDTO` |
+| `POST` | `/api/usuarios/login` | Público | `200` e `LoginResponseDTO` |
 | `POST` | `/api/usuarios` | Público | `201` |
 | `GET` | `/api/usuarios/{id}` | Público | `200` ou `404` |
 | `PUT` | `/api/usuarios/{id}` | Público no filtro atual | `204` |
@@ -458,7 +458,7 @@ específico, ele pode ser um objeto vazio.
 ### Fluxo da usuária
 
 1. `POST /api/usuarios` para criar a conta.
-2. `POST /api/auth/usuarios/login` para obter `dsUuid`.
+2. `POST /api/usuarios/login` para obter `dsUuid`.
 3. Enviar `X-Session-UUID` para criar, consultar ou cancelar acolhimento.
 4. `POST /api/usuarios/logout` para revogar a sessão.
 
@@ -476,7 +476,7 @@ específico, ele pode ser um objeto vazio.
 ### Exemplo com cURL
 
 ```bash
-curl -X POST http://localhost:8080/api/auth/usuarios/login \
+curl -X POST http://localhost:8080/api/usuarios/login \
   -H "Content-Type: application/json" \
   -d "{\"dsEmail\":\"ana@example.com\",\"dsSenha\":\"senha-segura\"}"
 ```
@@ -507,3 +507,62 @@ ari-api/
 
 Ao adicionar ou alterar uma rota, atualize também este README e valide o
 contrato em `/v3/api-docs` e na Swagger UI.
+
+## Compatibilidade da documentação atual
+
+Esta seção complementa o catálogo acima com o estado atual dos Controllers,
+DTOs e Exceptions.
+
+### Swagger/OpenAPI
+
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+- OpenAPI YAML: `http://localhost:8080/v3/api-docs.yaml`
+- Headers de sessão são documentados como parâmetros de header.
+- DTOs de entrada e saída possuem `@Schema`, exemplos e valores permitidos.
+- O endpoint `PATCH /api/funcionarios/{id}/status` mantém intencionalmente o
+  corpo como `Map<String, String>` e recebe `stFuncionario` com `ATIVO` ou
+  `INATIVO`.
+
+### Rotas atuais de autenticação
+
+| Método | Rota | Resultado |
+|---|---|---|
+| `POST` | `/api/usuarios` | Cria usuária (`201`) |
+| `POST` | `/api/usuarios/login` | Login da usuária (`200`) |
+| `GET` | `/api/usuarios/me` | Consulta o próprio perfil (`200`) |
+| `PUT` | `/api/usuarios/me` | Atualiza o próprio perfil (`204`) |
+| `PATCH` | `/api/usuarios/me/senha` | Atualiza a senha (`204`) |
+| `DELETE` | `/api/usuarios/me` | Bloqueia a própria conta (`204`) |
+| `POST` | `/api/usuarios/logout` | Encerra a sessão (`204`) |
+| `POST` | `/api/funcionarios/login` | Login do funcionário (`200`) |
+| `POST` | `/api/funcionarios/logout` | Encerra a sessão (`204`) |
+
+### Formato de erro atualizado
+
+Os erros tratados pelo `GlobalExceptionHandler` usam `ApiErrorResponse`:
+
+```json
+{
+  "timestamp": "2026-11-19T14:30:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Dados inválidos.",
+  "path": "/api/usuarios",
+  "fields": {}
+}
+```
+
+| Exceção | HTTP |
+|---|---|
+| `RequisicaoInvalidaException` | `400 Bad Request` |
+| `RecursoNaoEncontradoException` | `404 Not Found` |
+| `NaoAutenticadoException` | `401 Unauthorized` |
+| `CredenciaisInvalidasException` | `401 Unauthorized` |
+| `SessaoInvalidaException` | `401 Unauthorized` |
+| `AcessoNegadoException` | `403 Forbidden` |
+| `ConflitoException` | `409 Conflict` |
+| `IntegracaoException` | `502 Bad Gateway` |
+
+Também são tratados erros de validação (`400`), método HTTP não suportado
+(`405`) e tipo de mídia não suportado (`415`).
