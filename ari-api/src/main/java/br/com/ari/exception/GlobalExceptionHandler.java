@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -65,7 +68,8 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class,
             MissingRequestHeaderException.class,
-            MissingServletRequestParameterException.class
+            MissingServletRequestParameterException.class,
+            MissingPathVariableException.class
     })
     public ResponseEntity<ApiErrorResponse> tratarRequisicaoInvalida(
             Exception exception,
@@ -78,6 +82,84 @@ public class GlobalExceptionHandler {
         return resposta(
                 HttpStatus.BAD_REQUEST,
                 message,
+                request,
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponse> tratarMetodoNaoSuportado(
+            HttpRequestMethodNotSupportedException exception,
+            HttpServletRequest request) {
+
+        return resposta(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                mensagem(exception),
+                request,
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponse> tratarMediaNaoSuportada(
+            HttpMediaTypeNotSupportedException exception,
+            HttpServletRequest request) {
+
+        return resposta(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                mensagem(exception),
+                request,
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(AcessoNegadoException.class)
+    public ResponseEntity<ApiErrorResponse> tratarAcessoNegado(
+            AcessoNegadoException exception,
+            HttpServletRequest request) {
+
+        return resposta(
+                HttpStatus.FORBIDDEN,
+                mensagem(exception),
+                request,
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(CredenciaisInvalidasException.class)
+    public ResponseEntity<ApiErrorResponse> tratarCredenciaisInvalidas(
+            CredenciaisInvalidasException exception,
+            HttpServletRequest request) {
+
+        return resposta(
+                HttpStatus.UNAUTHORIZED,
+                mensagem(exception),
+                request,
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(SessaoInvalidaException.class)
+    public ResponseEntity<ApiErrorResponse> tratarSessaoInvalida(
+            SessaoInvalidaException exception,
+            HttpServletRequest request) {
+
+        return resposta(
+                HttpStatus.UNAUTHORIZED,
+                mensagem(exception),
+                request,
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(IntegracaoException.class)
+    public ResponseEntity<ApiErrorResponse> tratarFalhaIntegracao(
+            IntegracaoException exception,
+            HttpServletRequest request) {
+
+        return resposta(
+                HttpStatus.BAD_GATEWAY,
+                mensagem(exception),
                 request,
                 Map.of()
         );
